@@ -118,7 +118,7 @@ class _CustomerDossierDialogState extends State<CustomerDossierDialog> {
                 TextFormField(
                   controller: _rentCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Amount (e.g. $500)',
+                    labelText: r'Amount (e.g. $500)',
                     filled: true, fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),

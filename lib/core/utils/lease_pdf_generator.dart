@@ -10,7 +10,7 @@ class LeasePdfGenerator {
     required String propertyTitle,
     required DateTime startDate,
     required DateTime endDate,
-    String monthlyRent = "$500", // Default placeholder
+    String monthlyRent = r"$500", // Default placeholder
   }) async {
     final pdf = pw.Document();
     final dateFormat = DateFormat('MMMM dd, yyyy');
