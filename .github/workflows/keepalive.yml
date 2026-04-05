@@ -1,0 +1,44 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Runs at 00:00 every 3rd day
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Allows manual triggering from the GitHub UI
+
+jobs:
+  ping_supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Heartbeat to Supabase
+        run: |
+          echo "Initiating auth ping to prevent Free Tier pause..."
+          
+          SUPABASE_URL="https://mgthkmyhzidkmrqksanx.supabase.co"
+          SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ndGhrbXloemlka21ycWtzYW54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDk5MDUsImV4cCI6MjA5MDkyNTkwNX0.LV8UcxXiZn3z4uJ_Mn7n58VidsqMa-5n5UgU5MJ69GQ"
+          
+          # 1. Login with the Dummy User to generate API activity
+          RESPONSE=$(curl -s -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
+          -H "apikey: ${SUPABASE_ANON_KEY}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "tijaabo1234@gmail.com",
+            "password": "Maida2024#"
+          }')
+          
+          ACCESS_TOKEN=$(echo $RESPONSE | jq -r '.access_token')
+          
+          if [ "$ACCESS_TOKEN" == "null" ] || [ -z "$ACCESS_TOKEN" ]; then
+            echo "Failed to authenticate! Please ensure credentials are correct."
+            echo $RESPONSE
+            exit 1
+          fi
+          
+          echo "Successfully authenticated dummy user."
+          
+          # 2. Make an Authenticated Query to trigger database heat
+          curl -s -X GET "${SUPABASE_URL}/rest/v1/properties?select=id&limit=1" \
+          -H "apikey: ${SUPABASE_ANON_KEY}" \
+          -H "Authorization: Bearer $ACCESS_TOKEN"
+          
+          echo "Keep-Alive Ping Complete. Supabase timer reset!"
