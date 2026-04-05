@@ -17,7 +17,7 @@ class _CustomerDossierDialogState extends State<CustomerDossierDialog> {
 
   // Deal Wizard State
   final _propertyCtrl = TextEditingController();
-  final _rentCtrl = TextEditingController(text: '$500');
+  final _rentCtrl = TextEditingController(text: r'$500');
   DateTime? _startDate;
   DateTime? _endDate;
   String _selectedDocType = 'National ID Card';
