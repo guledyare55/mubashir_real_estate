@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 import '../../core/models/profile.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
+import '../../core/utils/lease_pdf_generator.dart';
 
 class CustomerDossierDialog extends StatefulWidget {
   final Profile customer;
@@ -14,10 +15,19 @@ class _CustomerDossierDialogState extends State<CustomerDossierDialog> {
   bool _isClosingDeal = false;
 
   // Deal Wizard State
+  final _propertyCtrl = TextEditingController();
+  final _rentCtrl = TextEditingController(text: '$500');
   DateTime? _startDate;
   DateTime? _endDate;
   String _selectedDocType = 'National ID Card';
   final List<String> _docTypes = ['National ID Card', 'Passport', 'Driver\'s License', 'Resident Permit'];
+
+  @override
+  void dispose() {
+    _propertyCtrl.dispose();
+    _rentCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,9 +103,21 @@ class _CustomerDossierDialogState extends State<CustomerDossierDialog> {
                 const Text('1. Property Assignment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 8),
                 TextFormField(
+                  controller: _propertyCtrl,
                   decoration: InputDecoration(
                     labelText: 'Select Property/Unit',
                     hintText: 'e.g. Modern Villa - Unit 4B',
+                    filled: true, fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Monthly Rent', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _rentCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Amount (e.g. $500)',
                     filled: true, fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
@@ -169,11 +191,37 @@ class _CustomerDossierDialogState extends State<CustomerDossierDialog> {
                     const SizedBox(width: 16),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.check_circle),
-                      label: const Text('Finalize Lease & Save Docs'),
+                      label: const Text('Finalize Lease & Generate PDF'),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16)),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lease Finalized & Identity Segregated for Compliance.')));
-                        Navigator.pop(context);
+                      onPressed: () async {
+                        if (_propertyCtrl.text.isEmpty || _startDate == null || _endDate == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please select property and lease dates.')),
+                          );
+                          return;
+                        }
+
+                        // 1. Generate the PDF bytes
+                        final pdfBytes = await LeasePdfGenerator.generate(
+                          customer: widget.customer,
+                          propertyTitle: _propertyCtrl.text.trim(),
+                          startDate: _startDate!,
+                          endDate: _endDate!,
+                          monthlyRent: _rentCtrl.text.trim(),
+                        );
+
+                        // 2. Open the system print dialog
+                        await Printing.layoutPdf(
+                          onLayout: (format) async => pdfBytes,
+                          name: 'Lease_Agreement_${widget.customer.fullName}.pdf',
+                        );
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Lease Finalized & PDF Generated!')),
+                          );
+                          Navigator.pop(context);
+                        }
                       },
                     )
                   ],
