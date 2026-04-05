@@ -21,15 +21,15 @@ jobs:
           RESPONSE=$(curl -s -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
           -H "apikey: ${SUPABASE_ANON_KEY}" \
           -H "Content-Type: application/json" \
-          -d '{
-            "email": "tijaabo1234@gmail.com",
-            "password": "Maida2024#"
-          }')
+          -d "{
+            \"email\": \"${{ secrets.KEEPALIVE_EMAIL }}\",
+            \"password\": \"${{ secrets.KEEPALIVE_PASSWORD }}\"
+          }")
           
           ACCESS_TOKEN=$(echo $RESPONSE | jq -r '.access_token')
           
           if [ "$ACCESS_TOKEN" == "null" ] || [ -z "$ACCESS_TOKEN" ]; then
-            echo "Failed to authenticate! Please ensure credentials are correct."
+            echo "Failed to authenticate! Please ensure secrets KEEPALIVE_EMAIL and KEEPALIVE_PASSWORD are set."
             echo $RESPONSE
             exit 1
           fi
