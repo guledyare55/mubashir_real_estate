@@ -119,14 +119,14 @@ class LeasePdfGenerator {
               children: [
                 pw.Column(
                   children: [
-                    pw.Container(width: 200, border: const pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 1))),
+                    pw.Container(width: 200, decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 1)))),
                     pw.SizedBox(height: 4),
                     pw.Text('Tenant Signature', style: const pw.TextStyle(fontSize: 10)),
                   ],
                 ),
                 pw.Column(
                   children: [
-                    pw.Container(width: 200, border: const pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 1))),
+                    pw.Container(width: 200, decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 1)))),
                     pw.SizedBox(height: 4),
                     pw.Text('Landlord (Mubashir Real Estate)', style: const pw.TextStyle(fontSize: 10)),
                   ],
