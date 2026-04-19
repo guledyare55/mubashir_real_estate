@@ -34,7 +34,8 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
       if (mounted) {
         setState(() {
           _nameCtrl.text = profile.fullName ?? '';
-          _emailCtrl.text = _supabaseService.client.auth.currentUser?.email ?? '';
+          _emailCtrl.text = _supabaseService.currentUserEmail ?? '';
+          _phoneCtrl.text = profile.phone ?? '';
         });
       }
     }

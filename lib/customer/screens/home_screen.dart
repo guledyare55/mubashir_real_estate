@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/models/property.dart';
@@ -5,7 +6,8 @@ import '../../core/services/supabase_service.dart';
 import 'property_details.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback onSearchTap;
+  const HomeScreen({super.key, required this.onSearchTap});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -14,144 +16,265 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   late Future<List<Property>> _propertiesFuture;
+  bool _isGridMode = true; // Elite Grid vs Dossier List
 
   @override
   void initState() {
     super.initState();
-    // Simulate fetching live public data
     _propertiesFuture = _supabaseService.fetchProperties();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Discover Properties', style: TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w700)),
-        centerTitle: false,
-      ),
-      body: SingleChildScrollView(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Search Bar
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Location, neighborhood, or city',
-                    prefixIcon: const Icon(Icons.search, color: Color(0xFF1E3A8A)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        slivers: [
+          // 1. Sleek Minimalist Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 30, 28, 0), 
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text('MUBASHIR', style: TextStyle(color: Color(0xFF0F172A), fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 3)), // Reduced size, increased spacing
+                          Text('REAL ESTATE', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 5)),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Colors.black.withOpacity(0.05))),
+                        child: const Icon(Icons.notifications_outlined, color: Color(0xFF0F172A), size: 22),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10), 
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        const TextSpan(text: 'Discover ', style: TextStyle(color: Colors.grey, fontSize: 13, letterSpacing: 0.5)),
+                        const TextSpan(text: 'Elite Sanctuary', style: TextStyle(color: Color(0xFF0F172A), fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5)), 
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 2. Navigation Bridge (Search Trigger)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: InkWell(
+                onTap: widget.onSearchTap,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  height: 60,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 30, offset: const Offset(0, 10)),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search_rounded, color: Color(0xFFF59E0B), size: 24),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Location, neighborhood, or city',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text('Featured', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
-              const SizedBox(height: 16),
-              
-              // Live Properties Feed
-              SizedBox(
-                height: 320,
-                child: FutureBuilder<List<Property>>(
-                  future: _propertiesFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (snapshot.hasError) {
-                      return Center(child: Text('Error loading properties: ${snapshot.error}', style: TextStyle(color: Colors.red)));
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text('No properties listed yet.'));
-                    }
+            ),
+          ),
 
-                    final properties = snapshot.data!;
-                    return ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: properties.length,
-                      itemBuilder: (context, index) {
-                        final prop = properties[index];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => PropertyDetails(property: prop)));
-                          },
-                          child: Container(
-                            width: 280,
-                            margin: const EdgeInsets.only(right: 16, bottom: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 5)),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                                  child: prop.mainImageUrl.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: prop.mainImageUrl,
-                                          height: 200,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) => Container(color: Colors.grey[200]),
-                                          errorWidget: (context, url, error) => Container(color: Colors.grey[300], child: const Icon(Icons.broken_image)),
-                                        )
-                                      : Container(height: 200, color: Colors.grey[300], child: const Icon(Icons.maps_home_work_outlined, size: 48, color: Colors.grey)),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('\$${prop.price.toStringAsFixed(0)}${prop.type == 'Rent' ? '/mo' : ''}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E3A8A))),
-                                      const SizedBox(height: 4),
-                                      Text(prop.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                      const SizedBox(height: 4),
-                                      Text('${prop.beds} Beds • ${prop.baths} Baths • ${prop.size.toStringAsFixed(0)} sqft', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text('Explore Categories', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
-              const SizedBox(height: 16),
-              // Category Pills
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
+          const SliverToBoxAdapter(child: SizedBox(height: 8)), // Minimal gap before listings
+
+          // 3. Section Header with Layout Toggle
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 0, 24, 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildCategoryPill('For Rent', Icons.key),
-                  _buildCategoryPill('For Sale', Icons.sell),
-                  _buildCategoryPill('Apartments', Icons.apartment),
+                  const Text('Featured Listings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.grid_view_rounded, color: _isGridMode ? const Color(0xFFF59E0B) : Colors.grey[400]),
+                        onPressed: () => setState(() => _isGridMode = true),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.view_agenda_rounded, color: !_isGridMode ? const Color(0xFFF59E0B) : Colors.grey[400]),
+                        onPressed: () => setState(() => _isGridMode = false),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
+
+          // 4. Dynamic Property View (Grid/List)
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            sliver: FutureBuilder<List<Property>>(
+              future: _propertiesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
+                }
+                final properties = snapshot.data ?? [];
+                
+                if (_isGridMode) {
+                  return SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 0.75,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _buildGridCard(properties[index]),
+                      childCount: properties.length,
+                    ),
+                  );
+                } else {
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildListCard(properties[index]),
+                      ),
+                      childCount: properties.length,
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridCard(Property prop) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => PropertyDetails(property: prop)),
+        );
+      },
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.black.withOpacity(0.05)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: CachedNetworkImage(
+                  imageUrl: prop.mainImageUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorWidget: (_, __, ___) => Container(color: Colors.grey[100], child: const Icon(Icons.image_outlined)),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(prop.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text('\$${prop.price.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 14)),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildListCard(Property prop) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => PropertyDetails(property: prop)),
+        );
+      },
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.black.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+              child: CachedNetworkImage(
+                imageUrl: prop.mainImageUrl,
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => Container(width: 120, color: Colors.grey[100]),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(prop.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1),
+                    const SizedBox(height: 4),
+                    Text('Premium Estate • ${prop.size.toStringAsFixed(0)} m²', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    const Spacer(),
+                    Text('\$${prop.price.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 16)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureIcon(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF0F172A).withOpacity(0.5)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+      ],
     );
   }
 

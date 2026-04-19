@@ -1,8 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/models/profile.dart';
+import '../../core/models/property.dart';
+import '../../core/models/agency_settings.dart';
 import 'home_screen.dart';
-import 'customer_auth_screen.dart';
+import 'modern_auth_screen.dart';
+import 'property_details.dart';
 
 class CustomerLayout extends StatefulWidget {
   const CustomerLayout({super.key});
@@ -33,43 +38,105 @@ class _CustomerLayoutState extends State<CustomerLayout> {
 
   Widget _buildAuthGate(Widget authenticatedView) {
     if (_isLoggedIn) return authenticatedView;
-    return CustomerAuthScreen(
+    return ModernAuthScreen(
       onLoginSuccess: () {
         // Auth state listener handles the rebuild automatically!
       },
     );
   }
 
+  void _switchToSearch() {
+    setState(() => _currentIndex = 1);
+  }
+
   // Generate pages dynamically based on login state
   List<Widget> get _pages => [
-    const HomeScreen(),
+    HomeScreen(onSearchTap: _switchToSearch),
     const SearchView(),
-    _buildAuthGate(const FavoritesView()),
-    _buildAuthGate(const ProfileView()),
+    const FavoritesView(),
+    const ProfileView(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    // FORCE LOGIN: The screen is entirely replaced by the Auth Screen if not logged in
+    if (!_isLoggedIn) {
+      return ModernAuthScreen(
+        onLoginSuccess: () {
+          // Rebuild will happen via the listener in initState
+        },
+      );
+    }
+
     return Scaffold(
+      extendBody: true, // IMPORTANT: Allows body to flow behind the glass dock
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: _pages[_currentIndex],
       ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: Colors.white,
-        elevation: 10,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
-          NavigationDestination(icon: Icon(Icons.favorite_border), label: 'Favorites'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
-        ],
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (idx) {
-          setState(() {
-            _currentIndex = idx;
-          });
-        },
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          height: 72, // Slightly more compact
+          margin: const EdgeInsets.fromLTRB(24, 0, 24, 0), // Fully grounded bottom margin
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(40),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A).withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(40),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildNavItem(0, Icons.home_rounded, 'Home'),
+                    _buildNavItem(1, Icons.search_rounded, 'Search'),
+                    _buildNavItem(2, Icons.favorite_rounded, 'Saved'),
+                    _buildNavItem(3, Icons.person_rounded, 'Profile'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF59E0B).withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFFF59E0B) : Colors.white.withOpacity(0.5),
+              size: 24,
+            ),
+            if (isSelected)
+              const SizedBox(height: 4),
+            if (isSelected)
+              Text(
+                label,
+                style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -81,68 +148,162 @@ class SearchView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        title: const Text('Search', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'City, neighborhood...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(color: const Color(0xFF1E3A8A), borderRadius: BorderRadius.circular(12)),
-                  child: IconButton(icon: const Icon(Icons.tune, color: Colors.white), onPressed: () {}),
-                )
-              ],
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: GridView.builder(
-                physics: const BouncingScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 0.75
-                ),
-                itemCount: 4,
-                itemBuilder: (context, index) {
-                  return Container(
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            floating: true,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: const Text('Search Properties', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(140), // Increased for categories
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                    child: Row(
                       children: [
-                        Expanded(child: Container(decoration: BoxDecoration(color: Colors.grey[300], borderRadius: const BorderRadius.vertical(top: Radius.circular(16))))),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text('\$2,500/mo', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-                              Text('Luxury Condo', style: TextStyle(fontWeight: FontWeight.w500)),
-                            ],
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const TextField(
+                              decoration: InputDecoration(
+                                hintText: 'City, neighborhood...',
+                                prefixIcon: Icon(Icons.search_rounded),
+                                border: InputBorder.none,
+                              ),
+                            ),
                           ),
-                        )
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.tune_rounded, color: Colors.white, size: 24),
+                        ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                  // Moving Categories here
+                  SizedBox(
+                    height: 50,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      children: [
+                        _buildCategoryChip('All', true),
+                        _buildCategoryChip('Villa', false),
+                        _buildCategoryChip('Apartment', false),
+                        _buildCategoryChip('Penthouse', false),
+                        _buildCategoryChip('Elite', false),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ),
-            )
-          ],
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            sliver: FutureBuilder<List<Property>>(
+              future: SupabaseService().fetchProperties(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
+                }
+                final properties = snapshot.data ?? [];
+                return SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.75,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final prop = properties[index];
+                      return InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => PropertyDetails(property: prop)),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.black.withOpacity(0.05)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                                  child: Image.network(
+                                    prop.mainImageUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    errorBuilder: (_, __, ___) => Container(color: Colors.grey[100]),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('\$${prop.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
+                                    const SizedBox(height: 4),
+                                    Text(prop.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1),
+                                    Text('Luxury Estate', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    childCount: properties.length,
+                  ),
+                );
+              },
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 120)), // Space for floating dock
+        ],
+      ),
+    );
+  }
+  Widget _buildCategoryChip(String label, bool isSelected) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8, bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFF59E0B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isSelected ? Colors.transparent : Colors.black.withOpacity(0.05)),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF0F172A),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 13,
+          ),
         ),
       ),
     );
@@ -161,35 +322,69 @@ class FavoritesView extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: 2,
-        itemBuilder: (context, index) {
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Row(
-              children: [
-                Container(
-                  width: 120, height: 120,
-                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: const BorderRadius.horizontal(left: Radius.circular(16))),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Modern Villa', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-                        const SizedBox(height: 8),
-                        const Text('\$1,250,000', style: TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold)),
-                      ],
+      body: FutureBuilder<List<Property>>(
+        future: SupabaseService().fetchSavedProperties(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final properties = snapshot.data ?? [];
+          if (properties.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.favorite_border_rounded, size: 64, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text('No saved properties yet', style: TextStyle(color: Colors.grey[500])),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: properties.length,
+            itemBuilder: (context, index) {
+              final prop = properties[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+                      child: Image.network(
+                        prop.mainImageUrl,
+                        width: 100, height: 100,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(width: 100, color: Colors.grey[100]),
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(prop.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                            const SizedBox(height: 4),
+                            Text('\$${prop.price.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.favorite, color: Colors.red),
+                      onPressed: () async {
+                        await SupabaseService().toggleFavorite(prop.id);
+                        // Refresh logic would go here
+                      },
+                    )
+                  ],
                 ),
-                IconButton(icon: const Icon(Icons.favorite, color: Colors.red), onPressed: () {})
-              ],
-            ),
+              );
+            },
           );
         },
       ),
@@ -207,6 +402,7 @@ class ProfileView extends StatefulWidget {
 class _ProfileViewState extends State<ProfileView> {
   final _supabaseService = SupabaseService();
   Profile? _profile;
+  AgencySettings? _settings;
   bool _isLoading = true;
 
   @override
@@ -217,9 +413,11 @@ class _ProfileViewState extends State<ProfileView> {
 
   Future<void> _loadProfile() async {
     final profile = await _supabaseService.getCurrentUserProfile();
+    final settings = await _supabaseService.fetchAgencySettings();
     if (mounted) {
       setState(() {
         _profile = profile;
+        _settings = settings;
         _isLoading = false;
       });
     }
@@ -272,7 +470,69 @@ class _ProfileViewState extends State<ProfileView> {
                       const Divider(height: 1),
                       _buildSettingsTile(Icons.shield_outlined, 'Security'),
                       const Divider(height: 1),
-                      _buildSettingsTile(Icons.help_outline, 'Help & Support'),
+                      _buildSettingsTile(
+                        Icons.help_outline, 
+                        'Help & Support',
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              title: const Text('Contact Support', style: TextStyle(fontWeight: FontWeight.bold)),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('Our team is here to help you finding your elite sanctuary.'),
+                                  const SizedBox(height: 24),
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF59E0B).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: InkWell(
+                                      onTap: () async {
+                                        if (_settings?.supportPhone == null) return;
+                                        final Uri telLaunchUri = Uri(
+                                          scheme: 'tel',
+                                          path: _settings!.supportPhone,
+                                        );
+                                        if (await canLaunchUrl(telLaunchUri)) {
+                                          await launchUrl(telLaunchUri);
+                                        } else {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Could not launch dialer')),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.phone_rounded, color: Color(0xFFF59E0B)),
+                                          const SizedBox(width: 16),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text('Support Hotline', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                              Text(_settings?.supportPhone ?? 'Not Available', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                            ],
+                                          ),
+                                          const Spacer(),
+                                          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFFF59E0B)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -283,7 +543,7 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildSettingsTile(IconData icon, String title) {
+  Widget _buildSettingsTile(IconData icon, String title, {VoidCallback? onTap}) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
@@ -292,7 +552,7 @@ class _ProfileViewState extends State<ProfileView> {
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 }

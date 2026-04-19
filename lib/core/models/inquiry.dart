@@ -1,3 +1,5 @@
+import 'property.dart';
+
 class Inquiry {
   final String id;
   final String propertyId;
@@ -7,6 +9,7 @@ class Inquiry {
   final String message;
   final String status;
   final DateTime createdAt;
+  final Property? property; // Nested property data
 
   Inquiry({
     required this.id,
@@ -17,6 +20,7 @@ class Inquiry {
     required this.message,
     required this.status,
     required this.createdAt,
+    this.property,
   });
 
   factory Inquiry.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,7 @@ class Inquiry {
       message: json['message'] as String,
       status: json['status'] as String? ?? 'New',
       createdAt: DateTime.parse(json['created_at']),
+      property: json['property'] != null ? Property.fromJson(json['property']) : null,
     );
   }
 

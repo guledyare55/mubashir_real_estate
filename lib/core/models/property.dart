@@ -13,6 +13,8 @@ class Property {
   final String? videoUrl;
   final double? lat;
   final double? lng;
+  final String? ownerId;
+  final String? agentId;
 
   Property({
     required this.id,
@@ -29,6 +31,8 @@ class Property {
     this.videoUrl,
     this.lat,
     this.lng,
+    this.ownerId,
+    this.agentId,
   });
 
   // Convert from Supabase PostgreSQL JSON payload to Dart Object
@@ -48,6 +52,8 @@ class Property {
       videoUrl: json['video_url'] as String?,
       lat: (json['lat'] as num?)?.toDouble(),
       lng: (json['lng'] as num?)?.toDouble(),
+      ownerId: json['owner_id'] as String?,
+      agentId: json['agent_id'] as String?,
     );
   }
 
@@ -68,6 +74,8 @@ class Property {
       if (videoUrl != null) 'video_url': videoUrl,
       if (lat != null) 'lat': lat,
       if (lng != null) 'lng': lng,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (agentId != null) 'agent_id': agentId,
     };
   }
 }

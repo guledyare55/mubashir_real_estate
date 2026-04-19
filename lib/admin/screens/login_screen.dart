@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/supabase_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,7 +16,27 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   final _supabaseService = SupabaseService();
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('last_admin_email');
+    if (savedEmail != null && mounted) {
+      setState(() => _emailCtrl.text = savedEmail);
+    }
+  }
+
+  Future<void> _saveEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_admin_email', email);
+  }
 
   void _handleLogin() async {
     setState(() {
@@ -26,17 +46,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await _supabaseService.signInAdmin(_emailCtrl.text.trim(), _passwordCtrl.text);
+      await _saveEmail(_emailCtrl.text.trim());
       if (mounted) {
         GoRouter.of(context).go('/dashboard');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -112,9 +137,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         // Logo for mobile view
                         if (MediaQuery.of(context).size.width <= 800)
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 48),
-                            child: Icon(Icons.real_estate_agent, size: 64, color: Color(0xFF1E3A8A)),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 48),
+                            child: Image.asset(
+                              'assets/branding/admin_icon.png',
+                              height: 80,
+                              width: 80,
+                            ),
                           ),
                         
                         const Text(
@@ -151,10 +180,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 8),
                         TextField(
                           controller: _passwordCtrl,
-                          obscureText: true,
+                          obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             hintText: '••••••••',
                             prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
                             filled: true,
                             fillColor: Theme.of(context).brightness == Brightness.light ? Colors.grey.shade100 : Colors.grey.shade900,
                             border: OutlineInputBorder(

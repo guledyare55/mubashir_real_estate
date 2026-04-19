@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flex_color_scheme/flex_color_scheme.dart';
 
 import 'customer/screens/customer_layout.dart';
+import 'customer/screens/splash_screen.dart';
+import 'customer/screens/modern_auth_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,9 +23,12 @@ void main() async {
 final _router = GoRouter(
   initialLocation: '/',
   routes: [
+    GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+    GoRoute(path: '/home', builder: (context, state) => const CustomerLayout()),
     GoRoute(
-      path: '/',
-      builder: (context, state) => const CustomerLayout(),
+      path: '/auth',
+      builder: (context, state) =>
+          ModernAuthScreen(onLoginSuccess: () => context.go('/home')),
     ),
   ],
 );
@@ -35,57 +39,59 @@ class CustomerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Customer Properties',
-      theme: FlexThemeData.light(
-        colors: const FlexSchemeColor(
-          primary: Color(0xFF1E3A8A), // Deep Blue
-          primaryContainer: Color(0xFFD0E4FF),
-          secondary: Color(0xFFF59E0B), // Gold
-          secondaryContainer: Color(0xFFFFDCC0),
-          tertiary: Color(0xFF006875),
-          tertiaryContainer: Color(0xFF95F0FF),
-          appBarColor: Color(0xFFF59E0B),
-          error: Color(0xFFB00020),
-        ),
-        surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-        blendLevel: 7,
-        subThemesData: const FlexSubThemesData(
-          blendOnLevel: 10,
-          blendOnColors: false,
-          useTextTheme: true,
-          defaultRadius: 16.0,
-          elevatedButtonRadius: 16.0,
-          outlinedButtonRadius: 16.0,
-          inputDecoratorRadius: 12.0,
-        ),
-        visualDensity: FlexColorScheme.comfortablePlatformDensity,
+      title: 'Mubashir Real Estate',
+      theme: ThemeData(
         useMaterial3: true,
-      ),
-      darkTheme: FlexThemeData.dark(
-        colors: const FlexSchemeColor(
-          primary: Color(0xFF1E3A8A), // Deep Blue
-          primaryContainer: Color(0xFFD0E4FF),
-          secondary: Color(0xFFF59E0B), // Gold
-          secondaryContainer: Color(0xFFFFDCC0),
-          tertiary: Color(0xFF006875),
-          tertiaryContainer: Color(0xFF95F0FF),
-          appBarColor: Color(0xFFF59E0B),
-          error: Color(0xFFB00020),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0F172A), // Deep Navy
+          primary: const Color(0xFF0F172A),
+          secondary: const Color(0xFFF59E0B), // Champagne Gold
+          surface: const Color(0xFFF8FAFC), // Porcelain White
         ),
-        surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-        blendLevel: 13,
-        subThemesData: const FlexSubThemesData(
-          blendOnLevel: 20,
-          useTextTheme: true,
-          defaultRadius: 16.0,
-          elevatedButtonRadius: 16.0,
-          outlinedButtonRadius: 16.0,
-          inputDecoratorRadius: 12.0,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: false,
+          titleTextStyle: TextStyle(
+            color: Color(0xFF0F172A),
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+          iconTheme: IconThemeData(color: Color(0xFF0F172A)),
         ),
-        visualDensity: FlexColorScheme.comfortablePlatformDensity,
-        useMaterial3: true,
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(32),
+            side: BorderSide(color: Colors.black.withOpacity(0.05)),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0F172A),
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 56),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            elevation: 0,
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 16,
+          ),
+        ),
       ),
-      themeMode: ThemeMode.system,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
     );

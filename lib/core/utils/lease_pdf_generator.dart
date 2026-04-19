@@ -32,7 +32,7 @@ class LeasePdfGenerator {
                         style: pw.TextStyle(
                             fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
                     pw.Text('Professional Property Management Services',
-                        style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                        style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                   ],
                 ),
                 pw.Column(
@@ -41,7 +41,7 @@ class LeasePdfGenerator {
                     pw.Text('LEASE AGREEMENT',
                         style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     pw.Text('Date: ${dateFormat.format(DateTime.now())}',
-                        style: const pw.TextStyle(fontSize: 10)),
+                        style: pw.TextStyle(fontSize: 10)),
                   ],
                 ),
               ],
@@ -121,14 +121,14 @@ class LeasePdfGenerator {
                   children: [
                     pw.Container(width: 200, decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 1)))),
                     pw.SizedBox(height: 4),
-                    pw.Text('Tenant Signature', style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text('Tenant Signature', style: pw.TextStyle(fontSize: 10)),
                   ],
                 ),
                 pw.Column(
                   children: [
                     pw.Container(width: 200, decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black, width: 1)))),
                     pw.SizedBox(height: 4),
-                    pw.Text('Landlord (Mubashir Real Estate)', style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text('Landlord (Mubashir Real Estate)', style: pw.TextStyle(fontSize: 10)),
                   ],
                 ),
               ],
@@ -136,7 +136,7 @@ class LeasePdfGenerator {
             pw.SizedBox(height: 40),
             pw.Center(
               child: pw.Text('This document is a legally binding contract in accordance with local real estate laws.',
-                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600, fontStyle: pw.FontStyle.italic)),
+                  style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600, fontStyle: pw.FontStyle.italic)),
             ),
           ];
         },
