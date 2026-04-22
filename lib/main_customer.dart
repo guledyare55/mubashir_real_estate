@@ -3,19 +3,30 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'customer/screens/customer_layout.dart';
 import 'customer/screens/splash_screen.dart';
 import 'customer/screens/modern_auth_screen.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
-  // Mock initialization or real if provided
+  // Initialize Supabase
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
+
+  // Initialize Firebase (Safely)
+  try {
+    await Firebase.initializeApp();
+    await NotificationService().initialize();
+  } catch (e) {
+    debugPrint("Firebase initialization skipped or failed: $e");
+    debugPrint("Ensure google-services.json is present for full Push Notification support.");
+  }
 
   runApp(const CustomerApp());
 }

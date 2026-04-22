@@ -15,12 +15,14 @@ class _ModernAuthScreenState extends State<ModernAuthScreen> {
   final _supabaseService = SupabaseService();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   
   bool _isSignUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   String? _errorMessage;
 
   void _submit() async {
@@ -37,6 +39,9 @@ class _ModernAuthScreenState extends State<ModernAuthScreen> {
     try {
       if (_isSignUp) {
         if (_nameCtrl.text.isEmpty) throw Exception('Please enter your full name');
+        if (_passwordCtrl.text != _confirmPasswordCtrl.text) {
+          throw Exception('Passwords do not match');
+        }
         await _supabaseService.signUpCustomer(
           _emailCtrl.text.trim(),
           _passwordCtrl.text,
@@ -202,17 +207,37 @@ class _ModernAuthScreenState extends State<ModernAuthScreen> {
                             label: 'Password',
                             icon: Icons.lock_outline,
                             isPassword: _obscurePassword,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (_) => _submit(),
+                            textInputAction: _isSignUp ? TextInputAction.next : TextInputAction.done,
+                            onSubmitted: _isSignUp ? null : (_) => _submit(),
                             suffix: IconButton(
                               icon: Icon(
                                 _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                color: Colors.white.withOpacity(0.5),
+                                color: const Color(0xFF1E3A8A).withOpacity(0.5),
                                 size: 20,
                               ),
                               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                             ),
                           ),
+                          
+                          if (_isSignUp) ...[
+                            const SizedBox(height: 12),
+                            _buildGlassInput(
+                              controller: _confirmPasswordCtrl,
+                              label: 'Confirm Password',
+                              icon: Icons.lock_reset_outlined,
+                              isPassword: _obscureConfirmPassword,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _submit(),
+                              suffix: IconButton(
+                                icon: Icon(
+                                  _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                  color: const Color(0xFF1E3A8A).withOpacity(0.5),
+                                  size: 20,
+                                ),
+                                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                              ),
+                            ),
+                          ],
                           
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 20),

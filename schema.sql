@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   phone text,
   avatar_url text,
   role user_role DEFAULT 'customer',
+  fcm_token text,
+  notification_preferences jsonb DEFAULT '{"push": true, "email": true}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -36,12 +38,19 @@ CREATE TABLE IF NOT EXISTS public.properties (
   lng NUMERIC,
   owner_id UUID, -- Linked to owners table
   agent_id UUID, -- Linked to employees table
+  location TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Ensure columns exist for older versions of the table
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS owner_id UUID;
 ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS agent_id UUID;
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT '$';
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS location TEXT;
+
+-- Ensure columns exist for profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS fcm_token TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{"push": true, "email": true}'::jsonb;
 
 -- 11. Owners Table
 CREATE TABLE IF NOT EXISTS public.owners (
@@ -82,8 +91,12 @@ CREATE TABLE IF NOT EXISTS public.inquiries (
   customer_phone TEXT,
   message TEXT NOT NULL,
   status TEXT DEFAULT 'New',
+  customer_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Ensure column exists for inquiries
+ALTER TABLE public.inquiries ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 
 -- 4. Enable Row Level Security (RLS)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -133,6 +146,10 @@ CREATE POLICY "Admins can update inquiries." ON inquiries FOR UPDATE USING (publ
 
 DROP POLICY IF EXISTS "Admins can delete inquiries." ON inquiries;
 CREATE POLICY "Admins can delete inquiries." ON inquiries FOR DELETE USING (public.is_admin());
+
+-- Allow public/authenticated users to check for duplicates by email
+DROP POLICY IF EXISTS "Users can check for duplicates." ON inquiries;
+CREATE POLICY "Users can check for duplicates." ON inquiries FOR SELECT USING (true);
 
 -- 8. Trigger function: Auto-create Profile row when User completes Auth sign-up
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
@@ -196,6 +213,12 @@ CREATE POLICY "Public can view agency settings." ON agency_settings FOR SELECT U
 
 DROP POLICY IF EXISTS "Admins can update agency settings." ON agency_settings;
 CREATE POLICY "Admins can update agency settings." ON agency_settings FOR UPDATE USING (public.is_admin());
+
+-- UI Configuration Flags for Customer App
+ALTER TABLE public.agency_settings ADD COLUMN IF NOT EXISTS show_beds_on_card BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.agency_settings ADD COLUMN IF NOT EXISTS show_baths_on_card BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.agency_settings ADD COLUMN IF NOT EXISTS show_type_on_card BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.agency_settings ADD COLUMN IF NOT EXISTS show_size_on_card BOOLEAN DEFAULT FALSE;
 
 -- Seed the initial row
 INSERT INTO agency_settings (id, name) VALUES (1, 'Mubashir Real Estate') ON CONFLICT DO NOTHING;
@@ -269,3 +292,24 @@ CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT WITH CHECK (a
 -- 3. Allow authenticated users (Admins) to update/upsert images
 DROP POLICY IF EXISTS "Authenticated Update" ON storage.objects;
 CREATE POLICY "Authenticated Update" ON storage.objects FOR UPDATE USING (auth.role() = 'authenticated' AND (bucket_id = 'properties' OR bucket_id = 'branding'));
+
+-- 16. Notifications Table
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT DEFAULT 'Update', -- Update, Promotion, Listing, System
+  is_read BOOLEAN DEFAULT FALSE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Optional: NULL for global news
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can read own/global notifications." ON notifications;
+CREATE POLICY "Users can read own/global notifications." ON notifications 
+FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins can manage all notifications." ON notifications;
+CREATE POLICY "Admins can manage all notifications." ON notifications 
+FOR ALL USING (public.is_admin());

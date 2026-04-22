@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/services/supabase_service.dart';
@@ -62,10 +61,8 @@ class _SplashScreenState extends State<SplashScreen>
               // We use the absolute path for the generated asset
               ClipRRect(
                 borderRadius: BorderRadius.circular(24),
-                child: Image.file(
-                  File(
-                    'C:/Users/New User/.gemini/antigravity/brain/9d00c3ed-3967-4e92-8310-42e00c9be257/mubashir_avant_garde_splash_1_1776556894183.png',
-                  ),
+                child: Image.asset(
+                  'assets/branding/app_icon_new.jpg',
                   width: 300,
                   height: 300,
                   fit: BoxFit.cover,

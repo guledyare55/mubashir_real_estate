@@ -46,3 +46,12 @@ app.*.map.json
 
 # Secrets
 .env
+*.pfx
+test_certificate.pfx
+
+# Deployment Artifacts
+/scripts/Output/
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle

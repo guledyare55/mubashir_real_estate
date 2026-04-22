@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/models/property.dart';
+import '../../core/models/agency_settings.dart';
 import '../../core/services/supabase_service.dart';
 import 'property_details.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback onSearchTap;
@@ -16,12 +18,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   late Future<List<Property>> _propertiesFuture;
+  late Future<AgencySettings> _settingsFuture;
   bool _isGridMode = true; // Elite Grid vs Dossier List
 
   @override
   void initState() {
     super.initState();
     _propertiesFuture = _supabaseService.fetchProperties();
+    _settingsFuture = _supabaseService.fetchAgencySettings();
   }
 
   @override
@@ -48,10 +52,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text('REAL ESTATE', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 5)),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Colors.black.withOpacity(0.05))),
-                        child: const Icon(Icons.notifications_outlined, color: Color(0xFF0F172A), size: 22),
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(30),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white, 
+                            shape: BoxShape.circle, 
+                            border: Border.all(color: Colors.black.withOpacity(0.05)),
+                          ),
+                          child: const Icon(Icons.notifications_outlined, color: Color(0xFF0F172A), size: 22),
+                        ),
                       ),
                     ],
                   ),
@@ -131,38 +148,69 @@ class _HomeScreenState extends State<HomeScreen> {
           // 4. Dynamic Property View (Grid/List)
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            sliver: FutureBuilder<List<Property>>(
-              future: _propertiesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
-                }
-                final properties = snapshot.data ?? [];
+            sliver: FutureBuilder<AgencySettings>(
+              future: _settingsFuture,
+              builder: (context, settingsSnap) {
+                final settings = settingsSnap.data;
                 
-                if (_isGridMode) {
-                  return SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.75,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _buildGridCard(properties[index]),
-                      childCount: properties.length,
-                    ),
-                  );
-                } else {
-                  return SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _buildListCard(properties[index]),
-                      ),
-                      childCount: properties.length,
-                    ),
-                  );
-                }
+                return StreamBuilder<List<Property>>(
+                  stream: _supabaseService.propertiesStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                      return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
+                    }
+                    final properties = snapshot.data ?? [];
+                    
+                    if (properties.isEmpty) {
+                      return const SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40),
+                            child: Text('No properties available right now.', style: TextStyle(color: Colors.grey)),
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Perfect 3-row layout calculation
+                    final screenHeight = MediaQuery.of(context).size.height;
+                    final safePadding = MediaQuery.of(context).padding.top + MediaQuery.of(context).padding.bottom;
+                    final fixedHeaderHeight = 250.0; 
+                    final availableHeight = screenHeight - safePadding - fixedHeaderHeight;
+                    final targetItemHeight = availableHeight / 3;
+                    
+                    if (_isGridMode) {
+                      final cardWidth = (MediaQuery.of(context).size.width - 48 - 16) / 2;
+                      final dynamicAspectRatio = cardWidth / targetItemHeight;
+
+                      return SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: dynamicAspectRatio.clamp(0.6, 1.2),
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _buildGridCard(properties[index], settings),
+                          childCount: properties.length,
+                        ),
+                      );
+                    } else {
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: SizedBox(
+                              height: targetItemHeight,
+                              child: _buildListCard(properties[index], settings),
+                            ),
+                          ),
+                          childCount: properties.length,
+                        ),
+                      );
+                    }
+                  },
+                );
               },
             ),
           ),
@@ -172,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGridCard(Property prop) {
+  Widget _buildGridCard(Property prop, AgencySettings? settings) {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -208,7 +256,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(prop.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('\$${prop.price.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 14)),
+                  Row(
+                    children: [
+                      Text('${prop.currency}${prop.price.toStringAsFixed(0)}', 
+                        style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 14)),
+                      if (settings?.showTypeOnCard ?? true) ...[
+                        const SizedBox(width: 8),
+                        Text('• ${prop.type}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 10, fontWeight: FontWeight.w600)),
+                      ],
+                    ],
+                  ),
+                  if ((settings?.showBedsOnCard ?? true) || (settings?.showBathsOnCard ?? true) || (settings?.showSizeOnCard ?? false)) ...[
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          if (settings?.showBedsOnCard ?? true) 
+                            _buildMicroFeature(Icons.bed_rounded, '${prop.beds}'),
+                          if (settings?.showBathsOnCard ?? true) ...[
+                            if (settings?.showBedsOnCard ?? true) const SizedBox(width: 8),
+                            _buildMicroFeature(Icons.bathtub_rounded, '${prop.baths}'),
+                          ],
+                          if (settings?.showSizeOnCard ?? false) ...[
+                            if ((settings?.showBedsOnCard ?? true) || (settings?.showBathsOnCard ?? true)) const SizedBox(width: 8),
+                            _buildMicroFeature(Icons.square_foot_rounded, '${prop.size.toStringAsFixed(0)}m²'),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -218,7 +295,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildListCard(Property prop) {
+  Widget _buildMicroFeature(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: Colors.grey[400]),
+        const SizedBox(width: 3),
+        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+      ],
+    );
+  }
+
+  Widget _buildListCard(Property prop, AgencySettings? settings) {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -228,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        height: 120,
+        // height removed to support dynamic targetItemHeight
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
@@ -236,14 +324,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
-              child: CachedNetworkImage(
-                imageUrl: prop.mainImageUrl,
-                width: 120,
-                height: 120,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => Container(width: 120, color: Colors.grey[100]),
+            SizedBox(
+              width: 120,
+              height: double.infinity,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+                child: CachedNetworkImage(
+                  imageUrl: prop.mainImageUrl,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => Container(width: 120, color: Colors.grey[100]),
+                ),
               ),
             ),
             Expanded(
@@ -255,9 +346,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(prop.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1),
                     const SizedBox(height: 4),
-                    Text('Premium Estate • ${prop.size.toStringAsFixed(0)} m²', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    if ((settings?.showBedsOnCard ?? true) || (settings?.showBathsOnCard ?? true) || (settings?.showSizeOnCard ?? false))
+                      Row(
+                        children: [
+                          if (settings?.showBedsOnCard ?? true) _buildMicroFeature(Icons.bed_rounded, '${prop.beds} Beds'),
+                          if (settings?.showBathsOnCard ?? true) ...[
+                            if (settings?.showBedsOnCard ?? true) const SizedBox(width: 8),
+                            _buildMicroFeature(Icons.bathtub_rounded, '${prop.baths} Baths'),
+                          ],
+                          if (settings?.showSizeOnCard ?? false) ...[
+                            if ((settings?.showBedsOnCard ?? true) || (settings?.showBathsOnCard ?? true)) const SizedBox(width: 8),
+                            _buildMicroFeature(Icons.square_foot_rounded, '${prop.size.toStringAsFixed(0)} m²'),
+                          ],
+                        ],
+                      )
+                    else
+                      Text('Premium Estate', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                     const Spacer(),
-                    Text('\$${prop.price.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 16)),
+                    Row(
+                      children: [
+                        Text('${prop.currency}${prop.price.toStringAsFixed(0)}', 
+                          style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 16)),
+                        if (settings?.showTypeOnCard ?? true) ...[
+                          const SizedBox(width: 8),
+                          Text('• ${prop.type}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),

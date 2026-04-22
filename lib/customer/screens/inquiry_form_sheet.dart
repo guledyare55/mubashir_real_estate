@@ -21,6 +21,7 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
   
   bool _isLoading = false;
   bool _isSuccess = false;
+  bool _isAlreadyInquired = false;
 
   @override
   void initState() {
@@ -50,6 +51,22 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
     setState(() => _isLoading = true);
 
     try {
+      // Duplicate check (checks both user ID and email)
+      final alreadyInquired = await _supabaseService.hasAlreadyInquired(widget.property.id, _emailCtrl.text.trim());
+      if (alreadyInquired) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _isAlreadyInquired = true;
+          });
+          // Auto close after 4 seconds
+          Future.delayed(const Duration(seconds: 4), () {
+            if (mounted) Navigator.pop(context);
+          });
+        }
+        return;
+      }
+
       final inquiry = Inquiry(
         id: '', // Supabase auto-generates this UUID
         propertyId: widget.property.id,
@@ -84,22 +101,38 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isSuccess) {
+    if (_isSuccess || _isAlreadyInquired) {
       return Container(
-        height: 300,
+        height: 320,
         padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 64),
-            const SizedBox(height: 16),
-            const Text('Inquiry Sent!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
-            const SizedBox(height: 8),
-            Text('The agent for ${widget.property.title} will contact you shortly.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[700])),
+            Icon(
+              _isAlreadyInquired ? Icons.info_outline_rounded : Icons.check_circle_rounded, 
+              color: _isAlreadyInquired ? const Color(0xFFF59E0B) : Colors.green, 
+              size: 80
+            ),
+            const SizedBox(height: 24),
+            Text(
+              _isAlreadyInquired ? 'Inquiry Already Active' : 'Inquiry Sent!', 
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _isAlreadyInquired 
+                ? 'You have already inquired about this property. An agent will be in touch with you very soon.' 
+                : 'Your message for ${widget.property.title} has been received. Our team will contact you shortly.', 
+              textAlign: TextAlign.center, 
+              style: TextStyle(color: Colors.grey[600], height: 1.5, fontSize: 14)
+            ),
+            const SizedBox(height: 32),
+            if (_isAlreadyInquired)
+              Text('Thank you for your patience!', style: TextStyle(color: Colors.grey[400], fontStyle: FontStyle.italic, fontSize: 12)),
           ],
         ),
       );

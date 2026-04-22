@@ -3,7 +3,8 @@ class Property {
   final String title;
   final String description;
   final double price;
-  final String type;
+  final String type; // Sale or Rent
+  final String? categoryName; // Dynamic Category (Villa, Penthouse, etc.)
   final int beds;
   final int baths;
   final double size;
@@ -15,6 +16,8 @@ class Property {
   final double? lng;
   final String? ownerId;
   final String? agentId;
+  final String currency;
+  final String? location;
 
   Property({
     required this.id,
@@ -22,6 +25,7 @@ class Property {
     required this.description,
     required this.price,
     required this.type,
+    this.categoryName,
     required this.beds,
     required this.baths,
     required this.size,
@@ -33,6 +37,8 @@ class Property {
     this.lng,
     this.ownerId,
     this.agentId,
+    required this.currency,
+    this.location,
   });
 
   // Convert from Supabase PostgreSQL JSON payload to Dart Object
@@ -43,6 +49,7 @@ class Property {
       description: json['description'] as String? ?? '',
       price: (json['price'] as num).toDouble(),
       type: json['type'] as String,
+      categoryName: json['category_name'] as String?,
       beds: json['beds'] as int? ?? 0,
       baths: json['baths'] as int? ?? 0,
       size: (json['size'] as num?)?.toDouble() ?? 0,
@@ -54,6 +61,8 @@ class Property {
       lng: (json['lng'] as num?)?.toDouble(),
       ownerId: json['owner_id'] as String?,
       agentId: json['agent_id'] as String?,
+      currency: json['currency'] as String? ?? r'$',
+      location: json['location'] as String?,
     );
   }
 
@@ -65,6 +74,7 @@ class Property {
       'description': description,
       'price': price,
       'type': type,
+      'category_name': categoryName,
       'beds': beds,
       'baths': baths,
       'size': size,
@@ -76,6 +86,8 @@ class Property {
       if (lng != null) 'lng': lng,
       if (ownerId != null) 'owner_id': ownerId,
       if (agentId != null) 'agent_id': agentId,
+      'currency': currency,
+      if (location != null) 'location': location,
     };
   }
 }

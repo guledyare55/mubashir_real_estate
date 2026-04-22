@@ -1,4 +1,4 @@
-package com.example.mubashir_real_estate
+package com.mubashir.realestate
 
 import io.flutter.embedding.android.FlutterActivity
 

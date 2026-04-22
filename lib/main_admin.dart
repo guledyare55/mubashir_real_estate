@@ -4,20 +4,38 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 
+import 'package:window_manager/window_manager.dart';
 import 'admin/screens/login_screen.dart';
 import 'admin/screens/dashboard_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+  
   await dotenv.load(fileName: ".env");
 
-  // Mock initialization or real if provided
+  // Supabase initialization
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
+
+  WindowOptions windowOptions = const WindowOptions(
+    size: Size(1280, 720),
+    center: true,
+    backgroundColor: Colors.transparent,
+    skipTaskbar: false,
+    titleBarStyle: TitleBarStyle.normal,
+    title: 'Mubashir Admin Portal',
+  );
+  
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+    await windowManager.maximize();
+  });
 
   runApp(const AdminApp());
 }

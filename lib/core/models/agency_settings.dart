@@ -10,7 +10,14 @@ class AgencySettings {
   final bool isMaintenanceMode;
   final double defaultCommissionRate;
   final String? supportPhone;
+  final bool enableInquiryPopups;
   final DateTime updatedAt;
+
+  // UI Config Flags
+  final bool showBedsOnCard;
+  final bool showBathsOnCard;
+  final bool showTypeOnCard;
+  final bool showSizeOnCard;
 
   AgencySettings({
     required this.id,
@@ -25,6 +32,11 @@ class AgencySettings {
     this.defaultCommissionRate = 10.0,
     this.supportPhone,
     required this.updatedAt,
+    this.showBedsOnCard = true,
+    this.showBathsOnCard = true,
+    this.showTypeOnCard = true,
+    this.showSizeOnCard = false,
+    this.enableInquiryPopups = true,
   });
 
   factory AgencySettings.fromJson(Map<String, dynamic> json) {
@@ -44,6 +56,11 @@ class AgencySettings {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : DateTime.now(),
+      showBedsOnCard: json['show_beds_on_card'] ?? true,
+      showBathsOnCard: json['show_baths_on_card'] ?? true,
+      showTypeOnCard: json['show_type_on_card'] ?? true,
+      showSizeOnCard: json['show_size_on_card'] ?? false,
+      enableInquiryPopups: json['enable_inquiry_popups'] ?? true,
     );
   }
 
@@ -61,6 +78,11 @@ class AgencySettings {
       'default_commission_rate': defaultCommissionRate,
       'support_phone': supportPhone,
       'updated_at': updatedAt.toIso8601String(),
+      'show_beds_on_card': showBedsOnCard,
+      'show_baths_on_card': showBathsOnCard,
+      'show_type_on_card': showTypeOnCard,
+      'show_size_on_card': showSizeOnCard,
+      'enable_inquiry_popups': enableInquiryPopups,
     };
   }
 
@@ -75,6 +97,11 @@ class AgencySettings {
     bool? isMaintenanceMode,
     double? defaultCommissionRate,
     String? supportPhone,
+    bool? showBedsOnCard,
+    bool? showBathsOnCard,
+    bool? showTypeOnCard,
+    bool? showSizeOnCard,
+    bool? enableInquiryPopups,
   }) {
     return AgencySettings(
       id: id,
@@ -90,6 +117,11 @@ class AgencySettings {
           defaultCommissionRate ?? this.defaultCommissionRate,
       supportPhone: supportPhone ?? this.supportPhone,
       updatedAt: DateTime.now(),
+      showBedsOnCard: showBedsOnCard ?? this.showBedsOnCard,
+      showBathsOnCard: showBathsOnCard ?? this.showBathsOnCard,
+      showTypeOnCard: showTypeOnCard ?? this.showTypeOnCard,
+      showSizeOnCard: showSizeOnCard ?? this.showSizeOnCard,
+      enableInquiryPopups: enableInquiryPopups ?? this.enableInquiryPopups,
     );
   }
 }
