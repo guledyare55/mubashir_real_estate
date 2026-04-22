@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url text,
   role user_role DEFAULT 'customer',
   fcm_token text,
-  notification_preferences jsonb DEFAULT '{"push": true, "email": true}'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  id_type TEXT,
+  id_front_url TEXT,
+  id_back_url TEXT
 );
 
 -- 2. Create the properties table
@@ -51,6 +53,10 @@ ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS location TEXT;
 -- Ensure columns exist for profiles
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS fcm_token TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{"push": true, "email": true}'::jsonb;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS id_type TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS id_front_url TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS id_back_url TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS lease_url TEXT;
 
 -- 11. Owners Table
 CREATE TABLE IF NOT EXISTS public.owners (
@@ -59,6 +65,9 @@ CREATE TABLE IF NOT EXISTS public.owners (
   phone TEXT,
   email TEXT,
   bank_details TEXT,
+  id_front_url TEXT,
+  id_back_url TEXT,
+  lease_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -120,6 +129,9 @@ CREATE POLICY "Public profiles are viewable by everyone." ON profiles FOR SELECT
 
 DROP POLICY IF EXISTS "Users can update own profile." ON profiles;
 CREATE POLICY "Users can update own profile." ON profiles FOR UPDATE USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admins can update all profiles." ON profiles;
+CREATE POLICY "Admins can update all profiles." ON profiles FOR UPDATE USING (public.is_admin());
 
 -- 6. Properties RLS Policies
 DROP POLICY IF EXISTS "Public properties are viewable by everyone." ON properties;
@@ -280,18 +292,22 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('branding', 'branding', true)
 ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('kyc', 'kyc', true)
+ON CONFLICT (id) DO NOTHING;
+
 -- Storage RLS Policies (Fixes 403 Unauthorized errors)
 -- 1. Allow anyone to view images
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
-CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'properties' OR bucket_id = 'branding');
+CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'properties' OR bucket_id = 'branding' OR bucket_id = 'kyc');
 
 -- 2. Allow authenticated users (Admins) to upload images
 DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
-CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT WITH CHECK (auth.role() = 'authenticated' AND (bucket_id = 'properties' OR bucket_id = 'branding'));
+CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT WITH CHECK (auth.role() = 'authenticated' AND (bucket_id = 'properties' OR bucket_id = 'branding' OR bucket_id = 'kyc'));
 
 -- 3. Allow authenticated users (Admins) to update/upsert images
 DROP POLICY IF EXISTS "Authenticated Update" ON storage.objects;
-CREATE POLICY "Authenticated Update" ON storage.objects FOR UPDATE USING (auth.role() = 'authenticated' AND (bucket_id = 'properties' OR bucket_id = 'branding'));
+CREATE POLICY "Authenticated Update" ON storage.objects FOR UPDATE USING (auth.role() = 'authenticated' AND (bucket_id = 'properties' OR bucket_id = 'branding' OR bucket_id = 'kyc'));
 
 -- 16. Notifications Table
 CREATE TABLE IF NOT EXISTS public.notifications (

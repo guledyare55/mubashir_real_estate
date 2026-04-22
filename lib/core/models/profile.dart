@@ -6,6 +6,10 @@ class Profile {
   final String role;
   final Map<String, bool> notificationPreferences;
   final DateTime createdAt;
+  final String? idType;
+  final String? idFrontUrl;
+   final String? idBackUrl;
+  final String? leaseUrl;
 
   Profile({
     required this.id,
@@ -15,6 +19,10 @@ class Profile {
     required this.role,
     this.notificationPreferences = const {},
     required this.createdAt,
+    this.idType,
+    this.idFrontUrl,
+    this.idBackUrl,
+    this.leaseUrl,
   });
 
   factory Profile.fromJson(Map<String, dynamic> json) {
@@ -30,6 +38,10 @@ class Profile {
       role: json['role'] as String? ?? 'customer',
       notificationPreferences: prefs,
       createdAt: DateTime.parse(json['created_at']),
+      idType: json['id_type'] as String?,
+      idFrontUrl: json['id_front_url'] as String?,
+      idBackUrl: json['id_back_url'] as String?,
+      leaseUrl: json['lease_url'] as String?,
     );
   }
 
@@ -41,6 +53,10 @@ class Profile {
       if (avatarUrl != null) 'avatar_url': avatarUrl,
       'role': role,
       'notification_preferences': notificationPreferences,
+      if (idType != null) 'id_type': idType,
+      if (idFrontUrl != null) 'id_front_url': idFrontUrl,
+      if (idBackUrl != null) 'id_back_url': idBackUrl,
+      if (leaseUrl != null) 'lease_url': leaseUrl,
     };
   }
 }

@@ -58,7 +58,25 @@ class SupabaseService {
   }
 
   Future<AuthResponse> signInCustomer(String email, String password) async {
-    return await _client.auth.signInWithPassword(email: email, password: password);
+    final response = await _client.auth.signInWithPassword(email: email, password: password);
+    final profile = await getCurrentUserProfile();
+    if (profile != null && profile.role == 'admin') {
+      await signOut();
+      throw Exception('Admin accounts must use the Administrative Portal. Access to the customer app is restricted.');
+    }
+    return response;
+  }
+
+  Future<void> signInWithGoogle() async {
+    await _client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'com.guledyare55.mubashir://login-callback',
+    );
+  }
+
+  Future<bool> checkIfUserExists(String email) async {
+    final response = await _client.from('profiles').select().eq('email', email);
+    return (response as List).isNotEmpty;
   }
 
   Future<AuthResponse> signUpCustomer(String email, String password, String fullName, {String? phone}) async {
@@ -87,6 +105,22 @@ class SupabaseService {
   bool get isUserLoggedIn => _client.auth.currentUser != null;
   String? get currentUserEmail => _client.auth.currentUser?.email;
   Stream<AuthState> get onAuthStateChange => _client.auth.onAuthStateChange;
+
+  Future<void> verifyOtp(String email, String token, {OtpType type = OtpType.signup}) async {
+    await _client.auth.verifyOTP(
+      email: email,
+      token: token,
+      type: type,
+    );
+  }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _client.auth.resetPasswordForEmail(email);
+  }
+
+  Future<void> updatePassword(String newPassword) async {
+    await _client.auth.updateUser(UserAttributes(password: newPassword));
+  }
 
   // --- PROPERTIES ---
 
@@ -440,6 +474,39 @@ class SupabaseService {
     final path = 'logo_${DateTime.now().millisecondsSinceEpoch}_$fileName';
     await _client.storage.from('branding').uploadBinary(path, bytes, fileOptions: const FileOptions(cacheControl: '3600', upsert: true));
     return _client.storage.from('branding').getPublicUrl(path);
+  }
+
+  Future<String> uploadIdentityDocument(Uint8List bytes, String fileName, String userId) async {
+    final path = 'kyc/${userId}_${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    await _client.storage.from('kyc').uploadBinary(path, bytes, fileOptions: const FileOptions(cacheControl: '3600', upsert: true));
+    return _client.storage.from('kyc').getPublicUrl(path);
+  }
+
+  Future<void> updateCustomerKyc(String userId, String idType, String? frontUrl, String? backUrl) async {
+    await _client.from('profiles').update({
+      'id_type': idType,
+      if (frontUrl != null) 'id_front_url': frontUrl,
+      if (backUrl != null) 'id_back_url': backUrl,
+    }).eq('id', userId);
+  }
+
+  Future<String> uploadLeaseDocument(Uint8List bytes, String userId) async {
+    final path = 'leases/${userId}_${DateTime.now().millisecondsSinceEpoch}_lease.pdf';
+    await _client.storage.from('kyc').uploadBinary(path, bytes, fileOptions: const FileOptions(contentType: 'application/pdf', cacheControl: '3600', upsert: true));
+    return _client.storage.from('kyc').getPublicUrl(path);
+  }
+
+  Future<void> updateCustomerLease(String userId, String? leaseUrl) async {
+    await _client.from('profiles').update({
+      'lease_url': leaseUrl,
+    }).eq('id', userId);
+  }
+
+  Future<void> deleteLeaseDocument(String userId, String leaseUrl) async {
+    // 1. Remove from storage
+    await deleteImages([leaseUrl], bucket: 'kyc');
+    // 2. Clear from database
+    await updateCustomerLease(userId, null);
   }
 
   Future<int> deleteImages(List<String> urls, {String bucket = 'properties'}) async {

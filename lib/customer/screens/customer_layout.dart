@@ -11,7 +11,9 @@ import 'modern_auth_screen.dart';
 import 'property_details.dart';
 import 'notification_settings_screen.dart';
 import 'dart:async';
+import 'package:provider/provider.dart';
 import '../../core/models/inquiry.dart';
+import '../../core/theme/theme_manager.dart';
 
 class CustomerLayout extends StatefulWidget {
   const CustomerLayout({super.key});
@@ -153,6 +155,10 @@ class _CustomerLayoutState extends State<CustomerLayout> {
       return ModernAuthScreen(onLoginSuccess: () {});
     }
 
+    final theme = Theme.of(context);
+    final themeManager = Provider.of<ThemeManager>(context);
+    final isDark = themeManager.isDarkMode;
+
     return Scaffold(
       extendBody: true,
       body: SafeArea(
@@ -172,12 +178,12 @@ class _CustomerLayoutState extends State<CustomerLayout> {
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A).withOpacity(0.85),
+                  color: isDark ? const Color(0xFF1E293B).withOpacity(0.95) : Colors.white.withOpacity(0.95),
                   borderRadius: BorderRadius.circular(40),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withOpacity(isDark ? 0.5 : 0.1),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -186,10 +192,10 @@ class _CustomerLayoutState extends State<CustomerLayout> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildNavItem(0, Icons.home_rounded, 'Home'),
-                    _buildNavItem(1, Icons.search_rounded, 'Search'),
-                    _buildNavItem(2, Icons.favorite_rounded, 'Saved'),
-                    _buildNavItem(3, Icons.person_rounded, 'Profile'),
+                    _buildNavItem(0, Icons.home_rounded, 'Home', isDark),
+                    _buildNavItem(1, Icons.search_rounded, 'Search', isDark),
+                    _buildNavItem(2, Icons.favorite_rounded, 'Saved', isDark),
+                    _buildNavItem(3, Icons.person_rounded, 'Profile', isDark),
                   ],
                 ),
               ),
@@ -200,7 +206,7 @@ class _CustomerLayoutState extends State<CustomerLayout> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
+  Widget _buildNavItem(int index, IconData icon, String label, bool isDark) {
     final isSelected = _currentIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
@@ -221,7 +227,7 @@ class _CustomerLayoutState extends State<CustomerLayout> {
               icon,
               color: isSelected
                   ? const Color(0xFFF59E0B)
-                  : Colors.white.withOpacity(0.5),
+                  : (isDark ? Colors.white.withOpacity(0.4) : const Color(0xFF0F172A).withOpacity(0.4)),
               size: 24,
             ),
             if (isSelected) const SizedBox(height: 4),
@@ -267,8 +273,10 @@ class _SearchViewState extends State<SearchView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
@@ -276,12 +284,12 @@ class _SearchViewState extends State<SearchView> {
           slivers: [
             SliverAppBar(
               floating: true,
-              backgroundColor: Colors.white,
+              backgroundColor: theme.cardColor,
               elevation: 0,
-              title: const Text(
+              title: Text(
                 'Search Properties',
                 style: TextStyle(
-                  color: Color(0xFF0F172A),
+                  color: theme.colorScheme.secondary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -296,7 +304,7 @@ class _SearchViewState extends State<SearchView> {
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
+                                color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: const TextField(
@@ -312,12 +320,12 @@ class _SearchViewState extends State<SearchView> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0F172A),
+                              color: isDark ? theme.primaryColor : const Color(0xFF0F172A),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.tune_rounded,
-                              color: Colors.white,
+                              color: isDark ? theme.colorScheme.secondary : Colors.white,
                               size: 24,
                             ),
                           ),
@@ -416,10 +424,10 @@ class _SearchViewState extends State<SearchView> {
                         borderRadius: BorderRadius.circular(24),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: theme.cardColor,
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.black.withOpacity(0.05),
+                              color: theme.colorScheme.secondary.withOpacity(0.05),
                             ),
                           ),
                           child: Column(
@@ -445,7 +453,7 @@ class _SearchViewState extends State<SearchView> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '\$${prop.price.toStringAsFixed(0)}',
+                                      '${prop.currency}${prop.price.toStringAsFixed(0)}',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFFF59E0B),
@@ -454,9 +462,10 @@ class _SearchViewState extends State<SearchView> {
                                     const SizedBox(height: 4),
                                     Text(
                                       prop.title,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 13,
+                                        color: theme.colorScheme.secondary,
                                       ),
                                       maxLines: 1,
                                     ),
@@ -518,12 +527,14 @@ class FavoritesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Saved Properties',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -562,59 +573,70 @@ class FavoritesView extends StatelessWidget {
               itemCount: properties.length,
               itemBuilder: (context, index) {
                 final prop = properties[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.horizontal(
-                          left: Radius.circular(20),
-                        ),
-                        child: Image.network(
-                          prop.mainImageUrl,
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              Container(width: 100, color: Colors.grey[100]),
-                        ),
+                return InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PropertyDetails(property: prop),
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                prop.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '\$${prop.price.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  color: Color(0xFFF59E0B),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.horizontal(
+                            left: Radius.circular(20),
+                          ),
+                          child: Image.network(
+                            prop.mainImageUrl,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                Container(width: 100, color: Colors.grey[100]),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.favorite, color: Colors.red),
-                        onPressed: () async {
-                          await SupabaseService().toggleFavorite(prop.id);
-                        },
-                      ),
-                    ],
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  prop.title,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: theme.colorScheme.secondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${prop.currency}${prop.price.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFFF59E0B),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.favorite, color: Colors.red),
+                          onPressed: () async {
+                            await SupabaseService().toggleFavorite(prop.id);
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -792,19 +814,29 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final themeManager = Provider.of<ThemeManager>(context);
+    final isDark = themeManager.isDarkMode;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'My Profile',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: theme.colorScheme.secondary, fontWeight: FontWeight.bold),
         ),
+        iconTheme: IconThemeData(color: theme.colorScheme.secondary),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black87),
+            icon: Icon(themeManager.isDarkMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
+            color: theme.colorScheme.secondary,
+            onPressed: () => themeManager.toggleTheme(),
+          ),
+          IconButton(
+            icon: Icon(Icons.logout, color: theme.colorScheme.secondary),
             onPressed: () => _supabaseService.signOut(),
           ),
         ],
@@ -834,10 +866,10 @@ class _ProfileViewState extends State<ProfileView> {
                     const SizedBox(height: 16),
                     Text(
                       _profile?.fullName ?? 'Valued Customer',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: isDark ? Colors.white : theme.colorScheme.secondary,
                       ),
                     ),
                     Text(
@@ -853,8 +885,15 @@ class _ProfileViewState extends State<ProfileView> {
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? theme.cardColor : Colors.white,
                         borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
@@ -997,20 +1036,21 @@ class _ProfileViewState extends State<ProfileView> {
     String title, {
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
+          color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF9FAFB),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, color: Colors.black87),
+        child: Icon(icon, color: Theme.of(context).colorScheme.secondary),
       ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
-          color: Colors.black87,
+          color: Theme.of(context).colorScheme.secondary,
         ),
       ),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),

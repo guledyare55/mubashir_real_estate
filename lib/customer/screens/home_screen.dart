@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   late Future<List<Property>> _propertiesFuture;
   late Future<AgencySettings> _settingsFuture;
-  bool _isGridMode = true; // Elite Grid vs Dossier List
+  bool _isGridMode = true;
 
   @override
   void initState() {
@@ -30,8 +30,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -47,9 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('MUBASHIR', style: TextStyle(color: Color(0xFF0F172A), fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 3)), // Reduced size, increased spacing
-                          Text('REAL ESTATE', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 5)),
+                        children: [
+                          Text('MUBASHIR', style: TextStyle(color: theme.colorScheme.secondary, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 3)),
+                          const Text('REAL ESTATE', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 5)),
                         ],
                       ),
                       InkWell(
@@ -63,11 +66,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white, 
+                            color: isDark ? theme.cardColor : Colors.white, 
                             shape: BoxShape.circle, 
-                            border: Border.all(color: Colors.black.withOpacity(0.05)),
+                            border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.1)),
                           ),
-                          child: const Icon(Icons.notifications_outlined, color: Color(0xFF0F172A), size: 22),
+                          child: Icon(Icons.notifications_outlined, color: theme.colorScheme.secondary, size: 22),
                         ),
                       ),
                     ],
@@ -76,8 +79,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text.rich(
                     TextSpan(
                       children: [
-                        const TextSpan(text: 'Discover ', style: TextStyle(color: Colors.grey, fontSize: 13, letterSpacing: 0.5)),
-                        const TextSpan(text: 'Elite Sanctuary', style: TextStyle(color: Color(0xFF0F172A), fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5)), 
+                        TextSpan(text: 'Discover ', style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.5), fontSize: 13, letterSpacing: 0.5)),
+                        TextSpan(text: 'Elite Sanctuary', style: TextStyle(color: theme.colorScheme.secondary, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5)), 
                       ],
                     ),
                   ),
@@ -97,11 +100,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 60,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? theme.cardColor : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 30, offset: const Offset(0, 10)),
+                      BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 30, offset: const Offset(0, 10)),
                     ],
+                    border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.05)),
                   ),
                   child: Row(
                     children: [
@@ -109,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 12),
                       Text(
                         'Location, neighborhood, or city',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                        style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.3), fontSize: 13),
                       ),
                     ],
                   ),
@@ -118,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 8)), // Minimal gap before listings
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
           // 3. Section Header with Layout Toggle
           SliverToBoxAdapter(
@@ -127,15 +131,15 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Featured Listings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                  Text('Featured Listings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.secondary)),
                   Row(
                     children: [
                       IconButton(
-                        icon: Icon(Icons.grid_view_rounded, color: _isGridMode ? const Color(0xFFF59E0B) : Colors.grey[400]),
+                        icon: Icon(Icons.grid_view_rounded, color: _isGridMode ? const Color(0xFFF59E0B) : theme.colorScheme.secondary.withOpacity(0.3)),
                         onPressed: () => setState(() => _isGridMode = true),
                       ),
                       IconButton(
-                        icon: Icon(Icons.view_agenda_rounded, color: !_isGridMode ? const Color(0xFFF59E0B) : Colors.grey[400]),
+                        icon: Icon(Icons.view_agenda_rounded, color: !_isGridMode ? const Color(0xFFF59E0B) : theme.colorScheme.secondary.withOpacity(0.3)),
                         onPressed: () => setState(() => _isGridMode = false),
                       ),
                     ],
@@ -162,17 +166,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     final properties = snapshot.data ?? [];
                     
                     if (properties.isEmpty) {
-                      return const SliverToBoxAdapter(
+                      return SliverToBoxAdapter(
                         child: Center(
                           child: Padding(
-                            padding: EdgeInsets.all(40),
-                            child: Text('No properties available right now.', style: TextStyle(color: Colors.grey)),
+                            padding: const EdgeInsets.all(40),
+                            child: Text('No properties available right now.', style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.5))),
                           ),
                         ),
                       );
                     }
 
-                    // Perfect 3-row layout calculation
                     final screenHeight = MediaQuery.of(context).size.height;
                     final safePadding = MediaQuery.of(context).padding.top + MediaQuery.of(context).padding.bottom;
                     final fixedHeaderHeight = 250.0; 
@@ -191,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           childAspectRatio: dynamicAspectRatio.clamp(0.6, 1.2),
                         ),
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildGridCard(properties[index], settings),
+                          (context, index) => _buildGridCard(properties[index], settings, theme, isDark),
                           childCount: properties.length,
                         ),
                       );
@@ -202,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.only(bottom: 16),
                             child: SizedBox(
                               height: targetItemHeight,
-                              child: _buildListCard(properties[index], settings),
+                              child: _buildListCard(properties[index], settings, theme, isDark),
                             ),
                           ),
                           childCount: properties.length,
@@ -220,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGridCard(Property prop, AgencySettings? settings) {
+  Widget _buildGridCard(Property prop, AgencySettings? settings, ThemeData theme, bool isDark) {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -231,9 +234,12 @@ class _HomeScreenState extends State<HomeScreen> {
       borderRadius: BorderRadius.circular(24),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? theme.cardColor : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.05)),
+          boxShadow: [
+             if (isDark) BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   imageUrl: prop.mainImageUrl,
                   fit: BoxFit.cover,
                   width: double.infinity,
-                  errorWidget: (_, __, ___) => Container(color: Colors.grey[100], child: const Icon(Icons.image_outlined)),
+                  errorWidget: (_, __, ___) => Container(color: theme.cardColor, child: const Icon(Icons.image_outlined)),
                 ),
               ),
             ),
@@ -254,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(prop.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(prop.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: theme.colorScheme.secondary), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -273,14 +279,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         children: [
                           if (settings?.showBedsOnCard ?? true) 
-                            _buildMicroFeature(Icons.bed_rounded, '${prop.beds}'),
+                            _buildMicroFeature(Icons.bed_rounded, '${prop.beds}', theme),
                           if (settings?.showBathsOnCard ?? true) ...[
                             if (settings?.showBedsOnCard ?? true) const SizedBox(width: 8),
-                            _buildMicroFeature(Icons.bathtub_rounded, '${prop.baths}'),
+                            _buildMicroFeature(Icons.bathtub_rounded, '${prop.baths}', theme),
                           ],
                           if (settings?.showSizeOnCard ?? false) ...[
                             if ((settings?.showBedsOnCard ?? true) || (settings?.showBathsOnCard ?? true)) const SizedBox(width: 8),
-                            _buildMicroFeature(Icons.square_foot_rounded, '${prop.size.toStringAsFixed(0)}m²'),
+                            _buildMicroFeature(Icons.square_foot_rounded, '${prop.size.toStringAsFixed(0)}m²', theme),
                           ],
                         ],
                       ),
@@ -295,18 +301,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMicroFeature(IconData icon, String label) {
+  Widget _buildMicroFeature(IconData icon, String label, ThemeData theme) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 12, color: Colors.grey[400]),
+        Icon(icon, size: 12, color: theme.colorScheme.secondary.withOpacity(0.3)),
         const SizedBox(width: 3),
-        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: theme.colorScheme.secondary.withOpacity(0.5))),
       ],
     );
   }
 
-  Widget _buildListCard(Property prop, AgencySettings? settings) {
+  Widget _buildListCard(Property prop, AgencySettings? settings, ThemeData theme, bool isDark) {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -316,11 +322,13 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        // height removed to support dynamic targetItemHeight
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? theme.cardColor : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.05)),
+          boxShadow: [
+             if (isDark) BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
         ),
         child: Row(
           children: [
@@ -333,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   imageUrl: prop.mainImageUrl,
                   height: double.infinity,
                   fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(width: 120, color: Colors.grey[100]),
+                  errorWidget: (_, __, ___) => Container(width: 120, color: theme.cardColor),
                 ),
               ),
             ),
@@ -344,24 +352,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(prop.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1),
+                    Text(prop.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.secondary), maxLines: 1),
                     const SizedBox(height: 4),
                     if ((settings?.showBedsOnCard ?? true) || (settings?.showBathsOnCard ?? true) || (settings?.showSizeOnCard ?? false))
                       Row(
                         children: [
-                          if (settings?.showBedsOnCard ?? true) _buildMicroFeature(Icons.bed_rounded, '${prop.beds} Beds'),
+                          if (settings?.showBedsOnCard ?? true) _buildMicroFeature(Icons.bed_rounded, '${prop.beds} Beds', theme),
                           if (settings?.showBathsOnCard ?? true) ...[
                             if (settings?.showBedsOnCard ?? true) const SizedBox(width: 8),
-                            _buildMicroFeature(Icons.bathtub_rounded, '${prop.baths} Baths'),
+                            _buildMicroFeature(Icons.bathtub_rounded, '${prop.baths} Baths', theme),
                           ],
                           if (settings?.showSizeOnCard ?? false) ...[
                             if ((settings?.showBedsOnCard ?? true) || (settings?.showBathsOnCard ?? true)) const SizedBox(width: 8),
-                            _buildMicroFeature(Icons.square_foot_rounded, '${prop.size.toStringAsFixed(0)} m²'),
+                            _buildMicroFeature(Icons.square_foot_rounded, '${prop.size.toStringAsFixed(0)} m²', theme),
                           ],
                         ],
                       )
                     else
-                      Text('Premium Estate', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      Text('Premium Estate', style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.5), fontSize: 12)),
                     const Spacer(),
                     Row(
                       children: [
@@ -379,33 +387,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureIcon(IconData icon, String label) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: const Color(0xFF0F172A).withOpacity(0.5)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-      ],
-    );
-  }
-
-  Widget _buildCategoryPill(String label, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFD0E4FF),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF1E3A8A)),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
-        ],
       ),
     );
   }

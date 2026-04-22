@@ -50,6 +50,7 @@ dependencies:
   firebase_messaging: ^15.2.0
   flutter_local_notifications: ^18.0.1
   window_manager: ^0.4.3
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
@@ -118,16 +119,16 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/branding/app_icon_new.jpg"
+  image_path: "assets/branding/app_icon_production.png"
   min_sdk_android: 21 # android min sdk min:16, default:21
   web:
     generate: true
-    image_path: "assets/branding/admin_icon.png"
+    image_path: "assets/branding/app_icon_production.png"
     backgroundColor: "#0F172A"
     themeColor: "#1E3A8A"
   windows:
     generate: true
-    image_path: "assets/branding/admin_icon.png"
+    image_path: "assets/branding/app_icon_production.png"
     icon_size: 256 # min:48, max:256, default:256
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package

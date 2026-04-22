@@ -3,9 +3,6 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/white" />
 
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/launch_image" />
-    </item>
+    <!-- Removed the house logo from the native splash screen to ensure a seamless 
+         transition into the premium typography-based Flutter splash screen. -->
 </layer-list>

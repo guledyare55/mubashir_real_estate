@@ -436,7 +436,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: theme.colorScheme.primary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.real_estate_agent, color: Colors.white, size: 24),
+              child: _agencyLogoCtrl.text.isNotEmpty 
+                ? Image.network(_agencyLogoCtrl.text, width: 24, height: 24, fit: BoxFit.contain)
+                : const Icon(Icons.real_estate_agent, color: Colors.white, size: 24),
             ),
             const SizedBox(height: 12),
             IconButton(
@@ -463,7 +465,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: theme.colorScheme.primary,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.real_estate_agent, color: Colors.white, size: 24),
+                child: _agencyLogoCtrl.text.isNotEmpty 
+                  ? Image.network(_agencyLogoCtrl.text, width: 24, height: 24, fit: BoxFit.contain)
+                  : const Icon(Icons.real_estate_agent, color: Colors.white, size: 24),
               ),
               const SizedBox(width: 12),
               const Text('Admin Portal', 
@@ -1318,10 +1322,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   icon: Icon(Icons.more_vert_rounded, size: 20, color: theme.iconTheme.color?.withOpacity(0.5)),
                                   onSelected: (val) {
                                     if (val == 'dossier') {
-                                      showDialog(
+                                      showDialog<bool>(
                                         context: context,
                                         builder: (_) => CustomerDossierDialog(customer: profile),
-                                      );
+                                      ).then((refresh) {
+                                        if (refresh == true) _refreshAll();
+                                      });
                                     }
                                   },
                                   itemBuilder: (context) => [
