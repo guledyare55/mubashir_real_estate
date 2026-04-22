@@ -2,16 +2,13 @@
 <resources>
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <!-- 
-            We force the Android 12+ Splash Screen to have no icon and a solid white background.
-            This ensures a perfectly seamless transition into the Flutter-based white typography splash.
+            We use our 'invisible' white icon on a white background to force a 
+            pure white startup, effectively hiding the system's required icon.
         -->
-        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_white</item>
         <item name="android:windowSplashScreenBackground">@android:color/white</item>
         
-        <!-- Standard window background for older versions -->
         <item name="android:windowBackground">@drawable/launch_background</item>
-        
-        <!-- Force Light Mode for the splash screen duration -->
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
