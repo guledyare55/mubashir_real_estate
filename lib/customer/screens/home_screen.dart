@@ -6,6 +6,8 @@ import '../../core/models/agency_settings.dart';
 import '../../core/services/supabase_service.dart';
 import 'property_details.dart';
 import 'notifications_screen.dart';
+import 'package:provider/provider.dart';
+import '../../core/localization/language_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback onSearchTap;
@@ -32,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -79,8 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text.rich(
                     TextSpan(
                       children: [
-                        TextSpan(text: 'Discover ', style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.5), fontSize: 13, letterSpacing: 0.5)),
-                        TextSpan(text: 'Elite Sanctuary', style: TextStyle(color: theme.colorScheme.secondary, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5)), 
+                        TextSpan(text: '${lang.translate('discover')} ', style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.5), fontSize: 13, letterSpacing: 0.5)),
+                        TextSpan(text: lang.translate('elite_sanctuary'), style: TextStyle(color: theme.colorScheme.secondary, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5)), 
                       ],
                     ),
                   ),
@@ -170,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Center(
                           child: Padding(
                             padding: const EdgeInsets.all(40),
-                            child: Text('No properties available right now.', style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.5))),
+                            child: Text(lang.translate('no_properties_now'), style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.5))),
                           ),
                         ),
                       );

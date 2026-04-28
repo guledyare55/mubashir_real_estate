@@ -48,6 +48,8 @@ app.*.map.json
 .env
 *.pfx
 test_certificate.pfx
+firebase_service_account.json
+*service_account*.json
 
 # Deployment Artifacts
 /scripts/Output/

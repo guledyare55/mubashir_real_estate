@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -16,6 +17,7 @@ import '../models/office_expense.dart';
 import '../models/notification.dart';
 
 class SupabaseService {
+  // Service for managing Supabase database and authentication interactions.
   final SupabaseClient _client = Supabase.instance.client;
 
   // --- CATEGORIES ---
@@ -68,15 +70,61 @@ class SupabaseService {
   }
 
   Future<void> signInWithGoogle() async {
-    await _client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: 'com.guledyare55.mubashir://login-callback',
+    final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
+    final iosClientId = dotenv.env['GOOGLE_IOS_CLIENT_ID'];
+
+    print('DEBUG: Web Client ID: $webClientId');
+    print('DEBUG: iOS Client ID: $iosClientId');
+
+    if (webClientId == null || webClientId.isEmpty) {
+      print('DEBUG ERROR: Web Client ID is missing from .env!');
+      throw Exception('Google Sign-In is not configured correctly.');
+    }
+
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      serverClientId: webClientId,
+      scopes: ['email', 'profile'],
     );
+
+    print('DEBUG: Calling googleSignIn.signIn()...');
+    final googleUser = await googleSignIn.signIn();
+    
+    if (googleUser == null) {
+      print('DEBUG: googleSignIn.signIn() returned NULL (user cancelled)');
+      return;
+    }
+
+    print('DEBUG: Google Sign-In user found: ${googleUser.email}');
+    final googleAuth = await googleUser.authentication;
+    final accessToken = googleAuth.accessToken;
+    final idToken = googleAuth.idToken;
+
+    print('DEBUG: Got tokens. idToken length: ${idToken?.length ?? 0}');
+
+    if (idToken == null) {
+      throw Exception('No ID Token found.');
+    }
+
+    await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
+    print('DEBUG: Supabase signInWithIdToken successful!');
   }
 
   Future<bool> checkIfUserExists(String email) async {
     final response = await _client.from('profiles').select().eq('email', email);
     return (response as List).isNotEmpty;
+  }
+
+  String _cleanErrorMessage(dynamic e) {
+    String msg = e.toString();
+    if (msg.contains('com.google.android.gms.common.api.Api 10')) {
+      return 'Google Sign-In Error: Please ensure your SHA-1 and Support Email are configured in Google Cloud Console.';
+    }
+    if (msg.contains('Exception: ')) return msg.replaceAll('Exception: ', '');
+    return msg;
   }
 
   Future<AuthResponse> signUpCustomer(String email, String password, String fullName, {String? phone}) async {
@@ -101,7 +149,11 @@ class SupabaseService {
     if (response.statusCode >= 400) throw Exception('Failed to register natively: ${response.body}');
   }
 
-  Future<void> signOut() async => await _client.auth.signOut();
+  Future<void> signOut() async {
+    await GoogleSignIn().signOut();
+    await _client.auth.signOut();
+  }
+
   bool get isUserLoggedIn => _client.auth.currentUser != null;
   String? get currentUserEmail => _client.auth.currentUser?.email;
   Stream<AuthState> get onAuthStateChange => _client.auth.onAuthStateChange;
@@ -127,6 +179,14 @@ class SupabaseService {
   Future<List<Property>> fetchProperties() async {
     final response = await _client.from('properties').select().order('created_at', ascending: false);
     return (response as List).map((json) => Property.fromJson(json)).toList();
+  }
+
+  Stream<List<Property>> getPropertiesStream() {
+    return _client
+        .from('properties')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .map((data) => data.map((json) => Property.fromJson(json)).toList());
   }
 
   Stream<List<Property>> get propertiesStream {
@@ -340,17 +400,30 @@ class SupabaseService {
     await _client.from('profiles').update({'fcm_token': token}).eq('id', userId);
   }
 
-  Future<void> updateUserProfile({String? fullName, String? phone}) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
+  Future<void> updateUserProfile({String? fullName, String? phone, String? email}) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
 
     final updates = {
       if (fullName != null) 'full_name': fullName,
       if (phone != null) 'phone': phone,
     };
 
-    if (updates.isEmpty) return;
-    await _client.from('profiles').update(updates).eq('id', userId);
+    if (updates.isNotEmpty) {
+      await _client.from('profiles').update(updates).eq('id', user.id);
+    }
+
+    if (email != null && email.isNotEmpty && email != user.email) {
+      await _client.auth.updateUser(UserAttributes(email: email));
+    }
+  }
+
+  Future<void> verifyEmailChange(String newEmail, String otp) async {
+    await _client.auth.verifyOTP(
+      token: otp,
+      type: OtpType.emailChange,
+      email: newEmail,
+    );
   }
 
   // --- AGENCY SETTINGS ---

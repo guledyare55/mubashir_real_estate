@@ -21,6 +21,7 @@ import 'property_preview_dialog.dart';
 import 'rent_property_dialog.dart';
 import 'customer_dossier_dialog.dart';
 import 'walk_in_registration_dialog.dart';
+import '../services/admin_fcm_service.dart';
 import '../../main_admin.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -237,7 +238,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _broadcastAnnouncement(String title, String body, String type) async {
     try {
+      // 1. Save to Database
       await _supabaseService.broadcastAnnouncement(title, body, type);
+      
+      // 2. Send Push Notification via Firebase HTTP v1
+      try {
+        await AdminFcmService().sendBroadcastNotification(title: title, body: body);
+      } catch (fcmError) {
+        print('FCM Push Failed (but db saved): $fcmError');
+        // We don't throw here to avoid failing the DB save UI state
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Announcement broadcasted successfully!')));
       _refreshAll();
     } catch (e) {

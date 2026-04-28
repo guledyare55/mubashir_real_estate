@@ -108,7 +108,11 @@ async function runBuild() {
             cmd = `flutter ${format.cmd}`;
           }
         } else {
-          cmd = `flutter build ${format.cmd} --release -t ${app.target}`;
+          if (format.cmd === 'apk') {
+            cmd = `flutter build apk --release --target-platform android-arm64 --split-per-abi -t ${app.target}`;
+          } else {
+            cmd = `flutter build ${format.cmd} --release -t ${app.target}`;
+          }
         }
         
         console.log(`Running: ${cmd}`);

@@ -50,11 +50,18 @@ class ThemeManager with ChangeNotifier {
 
   // Elite Sanctuary Dark Theme - High-Contrast & Luxurious
   static ThemeData get darkTheme => FlexThemeData.dark(
-    scheme: FlexScheme.mandyRed,
+    colors: const FlexSchemeColor(
+      primary: Color(0xFFF59E0B), // Brand Gold
+      primaryContainer: Color(0xFFD97706),
+      secondary: Color(0xFFF8FAFC), // Off-white for Text/Icons
+      secondaryContainer: Color(0xFF94A3B8),
+      tertiary: Color(0xFF3B82F6),
+      tertiaryContainer: Color(0xFF2563EB),
+    ),
     surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-    blendLevel: 13,
+    blendLevel: 0, // CRITICAL: Set to 0 to prevent muddy/brownish blending
     subThemesData: const FlexSubThemesData(
-      blendOnLevel: 20,
+      blendOnLevel: 0,
       useTextTheme: true,
       useM2StyleDividerInM3: true,
       alignedDropdown: true,
@@ -64,10 +71,27 @@ class ThemeManager with ChangeNotifier {
     ),
     visualDensity: FlexColorScheme.comfortablePlatformDensity,
     useMaterial3: true,
-    primary: const Color(0xFFF59E0B), // Brand Gold
-    // CRITICAL: In Dark Mode, 'secondary' must be light to remain visible
-    secondary: const Color(0xFFF8FAFC), // Off-white for Text/Icons
     scaffoldBackground: const Color(0xFF0F172A), // Deep Midnight Navy
-    surface: const Color(0xFF1E293B), // Card/Surface Color
+  ).copyWith(
+    scaffoldBackgroundColor: const Color(0xFF0F172A),
+    cardColor: const Color(0xFF1E293B),
+    dialogBackgroundColor: const Color(0xFF1E293B),
+    canvasColor: const Color(0xFF0F172A),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: Color(0xFF1E293B),
+      modalBackgroundColor: Color(0xFF1E293B),
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF0F172A),
+      surfaceTintColor: Colors.transparent,
+    ),
+    colorScheme: const ColorScheme.dark(
+      primary: Color(0xFFF59E0B),
+      secondary: Color(0xFFF8FAFC),
+      surface: Color(0xFF1E293B),
+      background: Color(0xFF0F172A),
+      onSurface: Colors.white,
+      onBackground: Colors.white,
+    ),
   );
 }

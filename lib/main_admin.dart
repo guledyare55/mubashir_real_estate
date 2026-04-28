@@ -25,7 +25,6 @@ Future<void> main() async {
   WindowOptions windowOptions = const WindowOptions(
     size: Size(1280, 720),
     center: true,
-    backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,
     title: 'Mubashir Admin Portal',

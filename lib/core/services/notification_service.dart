@@ -39,6 +39,17 @@ class NotificationService {
       },
     );
 
+    // Explicitly create the high importance channel for background Heads-Up popups
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel', // id
+      'High Importance Notifications', // title
+      description: 'This channel is used for important notifications.', // description
+      importance: Importance.max,
+    );
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
     // 2. Request Permissions (especially for iOS and Android 13+)
     NotificationSettings settings = await _fcm.requestPermission(
       alert: true,

@@ -120,7 +120,8 @@ Interested? Contact *${_settings?.name ?? 'Mubashir Real Estate'}*
     return StreamBuilder<Property?>(
       stream: _supabaseService.propertyStream(widget.property.id),
       builder: (context, snapshot) {
-        final bool isDeleted = snapshot.hasData && snapshot.data == null;
+        // Correct logic: if stream is active but has no data, it's deleted
+        final bool isDeleted = snapshot.connectionState == ConnectionState.active && !snapshot.hasData;
         final property = snapshot.data ?? widget.property;
 
         return Scaffold(

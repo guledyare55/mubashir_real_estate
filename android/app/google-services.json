@@ -12,7 +12,20 @@
           "package_name": "com.mubashir.realestate"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "575525051681-ppnf1em4ou1ggrna46cljt7ihcco2lui.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mubashir.realestate",
+            "certificate_hash": "3a6447bfa17752aaf455e06e81b0ad69986e3c92"
+          }
+        },
+        {
+          "client_id": "575525051681-90ratiethd3tbvsouv3m6ik5t9od4dp9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC_THCBdzq5mUP4T9NRwswqSjWeITI26Z4"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "575525051681-90ratiethd3tbvsouv3m6ik5t9od4dp9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
