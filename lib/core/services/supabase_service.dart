@@ -471,12 +471,13 @@ class SupabaseService {
 
   // --- ENTERPRISE: PAYROLL & PERFORMANCE ---
 
-  Future<void> processPayroll(Employee employee) async {
+  Future<void> processPayroll(Employee employee, {double? customAmount}) async {
     // 1. Record the salary as an office expense
+    final amountToPay = customAmount ?? employee.salary;
     final payrollExpense = OfficeExpense(
       id: '',
       title: 'Monthly Salary: ${employee.name}',
-      amount: employee.salary,
+      amount: amountToPay,
       category: 'Payroll',
       date: DateTime.now(),
     );

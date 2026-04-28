@@ -8,6 +8,8 @@ import '../../core/models/property.dart';
 import '../../core/models/owner.dart';
 import '../../core/models/employee.dart';
 import '../../core/models/agency_settings.dart';
+import 'package:latlong2/latlong.dart';
+import 'map_picker_dialog.dart';
 
 class PropertyFormDialog extends StatefulWidget {
   final Property? property;
@@ -54,6 +56,8 @@ class _PropertyFormDialogState extends State<PropertyFormDialog> {
   List<String> _existingUrls = [];
   final List<String> _urlsToDelete = [];
   bool _showImageError = false;
+  double? _lat;
+  double? _lng;
 
   @override
   void initState() {
@@ -87,6 +91,8 @@ class _PropertyFormDialogState extends State<PropertyFormDialog> {
       _existingUrls = List.from(p.galleryUrls);
       _currency = p.currency;
       _locationController.text = p.location ?? '';
+      _lat = p.lat;
+      _lng = p.lng;
     }
   }
 
@@ -188,11 +194,84 @@ class _PropertyFormDialogState extends State<PropertyFormDialog> {
                             TextFormField(
                               controller: _locationController,
                               readOnly: widget.isReadOnly,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Location / Neighborhood', 
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.location_on_rounded),
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.location_on_rounded, color: Color(0xFFF59E0B)),
+                                suffixIcon: widget.isReadOnly ? null : IconButton(
+                                  icon: const Icon(Icons.map_rounded, color: Color(0xFFF59E0B)),
+                                  tooltip: 'Open Map Picker',
+                                  onPressed: () async {
+                                    final LatLng? initial = _lat != null && _lng != null 
+                                        ? LatLng(_lat!, _lng!) 
+                                        : null;
+                                    final result = await showDialog<LatLng>(
+                                      context: context,
+                                      builder: (context) => MapPickerDialog(initialPosition: initial),
+                                    );
+                                    if (result != null) {
+                                      setState(() {
+                                        _lat = result.latitude;
+                                        _lng = result.longitude;
+                                      });
+                                    }
+                                  },
+                                ),
                                 hintText: 'e.g. Bole, Addis Ababa'
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: _lat != null ? Colors.green.withOpacity(0.5) : Colors.grey[800]!),
+                                color: _lat != null ? Colors.green.withOpacity(0.05) : Colors.white.withOpacity(0.02),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: widget.isReadOnly ? null : () async {
+                                    final LatLng? initial = _lat != null && _lng != null 
+                                        ? LatLng(_lat!, _lng!) 
+                                        : null;
+                                    final result = await showDialog<LatLng>(
+                                      context: context,
+                                      builder: (context) => MapPickerDialog(initialPosition: initial),
+                                    );
+                                    if (result != null) {
+                                      setState(() {
+                                        _lat = result.latitude;
+                                        _lng = result.longitude;
+                                      });
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          _lat != null ? Icons.check_circle_rounded : Icons.add_location_alt_rounded, 
+                                          color: _lat != null ? Colors.green : const Color(0xFFF59E0B)
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          _lat != null && _lng != null 
+                                              ? 'PINNED: ${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)}' 
+                                              : 'TAP TO PIN EXACT LOCATION ON MAP',
+                                          style: TextStyle(
+                                            color: _lat != null ? Colors.green : const Color(0xFFF59E0B),
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 1.2,
+                                            fontSize: 13
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -210,7 +289,7 @@ class _PropertyFormDialogState extends State<PropertyFormDialog> {
                                     suffixIcon: widget.isReadOnly ? null : DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
                                         value: _currency,
-                                        items: [r'$', 'ETB', '€', '£', 'KES', 'UGX'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                        items: [r'$', 'ETB'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                                         onChanged: (v) => setState(() => _currency = v!),
                                       ),
                                     ),
@@ -519,6 +598,8 @@ class _PropertyFormDialogState extends State<PropertyFormDialog> {
                             agentId: _selectedAgentId,
                             currency: _currency,
                             location: _locationController.text.isEmpty ? null : _locationController.text,
+                            lat: _lat,
+                            lng: _lng,
                           );
 
                         if (widget.property != null) {

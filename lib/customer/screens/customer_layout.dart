@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -475,7 +476,7 @@ class _SearchViewState extends State<SearchView> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '${prop.currency}${prop.price.toStringAsFixed(0)}',
+                                      '${prop.currency} ${NumberFormat('#,###').format(prop.price)}',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFFF59E0B),
@@ -562,7 +563,7 @@ class _SearchViewState extends State<SearchView> {
           builder: (context, setSheetState) {
             return Container(
               height: MediaQuery.of(context).size.height * 0.85,
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.of(context).padding.bottom),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF0F172A) : theme.scaffoldBackgroundColor,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -822,7 +823,7 @@ class FavoritesView extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${prop.currency}${prop.price.toStringAsFixed(0)}',
+                                  '${prop.currency} ${NumberFormat('#,###').format(prop.price)}',
                                   style: const TextStyle(
                                     color: Color(0xFFF59E0B),
                                     fontWeight: FontWeight.bold,
@@ -914,7 +915,7 @@ class _ProfileViewState extends State<ProfileView> {
               child: GestureDetector(
                 onTap: () {}, // Prevent closing when tapping content
                 child: Container(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+                  padding: EdgeInsets.fromLTRB(24, 32, 24, 40 + MediaQuery.of(context).padding.bottom),
                   decoration: BoxDecoration(
                     color: isDark ? theme.scaffoldBackgroundColor : Colors.white,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -1088,11 +1089,14 @@ class _ProfileViewState extends State<ProfileView> {
     bool readOnly = false,
     Widget? suffix,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: isDark ? theme.cardColor : const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
       ),
       child: TextField(
         controller: ctrl,
@@ -1100,6 +1104,7 @@ class _ProfileViewState extends State<ProfileView> {
         autofocus: autofocus,
         readOnly: readOnly,
         textInputAction: textInputAction,
+        style: TextStyle(color: theme.colorScheme.secondary),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(color: Colors.grey, fontSize: 13),
@@ -1116,14 +1121,17 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   void _showLanguageSheet(BuildContext context, LanguageProvider lang) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        padding: EdgeInsets.fromLTRB(24, 32, 24, 40 + MediaQuery.of(context).padding.bottom),
+        decoration: BoxDecoration(
+          color: isDark ? theme.scaffoldBackgroundColor : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1131,10 +1139,10 @@ class _ProfileViewState extends State<ProfileView> {
           children: [
             Text(
               lang.translate('language'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
+                color: theme.colorScheme.secondary,
               ),
             ),
             const SizedBox(height: 24),
@@ -1148,7 +1156,10 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Widget _buildLanguageOption(BuildContext context, LanguageProvider lang, String name, String code, IconData icon) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isSelected = lang.currentLocale.languageCode == code;
+
     return InkWell(
       onTap: () {
         lang.setLanguage(code);
@@ -1158,7 +1169,7 @@ class _ProfileViewState extends State<ProfileView> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF59E0B).withOpacity(0.1) : const Color(0xFFF8FAFC),
+          color: isSelected ? const Color(0xFFF59E0B).withOpacity(0.1) : (isDark ? theme.cardColor : const Color(0xFFF8FAFC)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? const Color(0xFFF59E0B) : Colors.transparent,
@@ -1173,7 +1184,7 @@ class _ProfileViewState extends State<ProfileView> {
               name,
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFFF59E0B) : const Color(0xFF0F172A),
+                color: isSelected ? const Color(0xFFF59E0B) : theme.colorScheme.secondary,
               ),
             ),
             const Spacer(),
@@ -1314,21 +1325,25 @@ class _ProfileViewState extends State<ProfileView> {
                             onTap: () {
                               showDialog(
                                 context: context,
-                                builder: (context) => AlertDialog(
+                                builder: (context) {
+                                  final theme = Theme.of(context);
+                                  return AlertDialog(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  title: const Text(
+                                  title: Text(
                                     'Contact Support',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.secondary,
                                     ),
                                   ),
                                   content: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Text(
+                                      Text(
                                         'Our team is here to help you finding your elite sanctuary.',
+                                        style: TextStyle(color: theme.colorScheme.secondary.withOpacity(0.7)),
                                       ),
                                       const SizedBox(height: 24),
                                       Container(
@@ -1378,11 +1393,11 @@ class _ProfileViewState extends State<ProfileView> {
                                                   Text(
                                                     _settings?.supportPhone ??
                                                         'Not Available',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 18,
                                                       fontWeight:
                                                           FontWeight.bold,
-                                                      color: Color(0xFF0F172A),
+                                                      color: theme.colorScheme.secondary,
                                                     ),
                                                   ),
                                                 ],
@@ -1406,7 +1421,8 @@ class _ProfileViewState extends State<ProfileView> {
                                     ),
                                   ],
                                 ),
-                              );
+                                }
+                            );
                             },
                           ),
                         ],

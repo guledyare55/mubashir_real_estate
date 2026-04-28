@@ -80,6 +80,10 @@ class LanguageProvider with ChangeNotifier {
           'We sent a 6-digit code to your new email. Please enter it below to confirm the change.',
       'lock': 'Lock',
       'edit': 'Edit',
+      'property_deleted_desc': 'This property may have been leased, sold, or recently removed from our elite portfolio. Please return to the listings to explore other opportunities.',
+      'beds': 'Beds',
+      'or': 'or',
+      'login_error': 'Invalid email or password. Please try again.',
     },
     'so': {
       'profile': 'Profile-kayga',
@@ -127,6 +131,10 @@ class LanguageProvider with ChangeNotifier {
           'Waxaan u dirnay koodh 6-god ah iimaylkaaga cusub. Fadlan geli hoos si aad u xaqiijiso isbeddelka.',
       'lock': 'Quful',
       'edit': 'Beddel',
+      'property_deleted_desc': 'Waan ka xunnahay, hantidan aad fiirinayso hadda looma helayo si degdeg ah. Waxaa laga yaabaa in la kireeyay ama laga saaray nidaamka. Fadlan dib ugu laabo liiska hantida si aad u hesho fursado kale.',
+      'beds': 'Qol',
+      'or': 'ama',
+      'login_error': 'Fadlan hubi iimaylka iyo furo sireedka, markale isku day',
     },
   };
 }

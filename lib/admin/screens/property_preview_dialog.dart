@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../core/models/property.dart';
 
 class PropertyPreviewDialog extends StatefulWidget {
@@ -274,7 +275,7 @@ class _PropertyPreviewDialogState extends State<PropertyPreviewDialog> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '${widget.property.currency}${widget.property.price.toStringAsFixed(0)}',
+                                '${widget.property.currency} ${NumberFormat('#,###').format(widget.property.price)}',
                                 style: TextStyle(color: colorScheme.primary, fontSize: 32, fontWeight: FontWeight.w900),
                               ),
                               const SizedBox(height: 12),

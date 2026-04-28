@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/models/property.dart';
@@ -267,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text('${prop.currency}${prop.price.toStringAsFixed(0)}', 
+                      Text('${prop.currency} ${NumberFormat('#,###').format(prop.price)}', 
                         style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 14)),
                       if (settings?.showTypeOnCard ?? true) ...[
                         const SizedBox(width: 8),
@@ -376,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Spacer(),
                     Row(
                       children: [
-                        Text('${prop.currency}${prop.price.toStringAsFixed(0)}', 
+                        Text('${prop.currency} ${NumberFormat('#,###').format(prop.price)}', 
                           style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 16)),
                         if (settings?.showTypeOnCard ?? true) ...[
                           const SizedBox(width: 8),

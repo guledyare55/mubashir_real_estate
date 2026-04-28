@@ -62,12 +62,12 @@ class _ModernAuthScreenState extends State<ModernAuthScreen> {
 
   String _getOtpValue() => _otpControllers.map((c) => c.text).join();
 
-  String _cleanErrorMessage(dynamic e) {
+  String _cleanErrorMessage(dynamic e, LanguageProvider lang) {
     final msg = e.toString().toLowerCase();
     if (msg.contains('administrative portal'))
       return "Admin detected. Please use the Administrative Portal.";
     if (msg.contains('invalid login credentials'))
-      return "Invalid email or password. Please try again.";
+      return lang.translate('login_error');
     if (msg.contains('user already exists'))
       return "An account with this email already exists.";
     if (msg.contains('invalid token') || msg.contains('otp'))
@@ -153,7 +153,8 @@ class _ModernAuthScreenState extends State<ModernAuthScreen> {
           break;
       }
     } catch (e) {
-      setState(() => _errorMessage = _cleanErrorMessage(e));
+      final lang = Provider.of<LanguageProvider>(context, listen: false);
+      setState(() => _errorMessage = _cleanErrorMessage(e, lang));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -697,7 +698,8 @@ class _ModernAuthScreenState extends State<ModernAuthScreen> {
               widget.onLoginSuccess();
             } catch (e) {
               print('DEBUG: Google Login Catch block: $e');
-              setState(() => _errorMessage = _cleanErrorMessage(e));
+              final lang = Provider.of<LanguageProvider>(context, listen: false);
+              setState(() => _errorMessage = _cleanErrorMessage(e, lang));
             } finally {
               if (mounted) setState(() => _isLoading = false);
             }
@@ -739,7 +741,7 @@ class _ModernAuthScreenState extends State<ModernAuthScreen> {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Text(
-          'OR',
+          lang.translate('or').toUpperCase(),
           style: TextStyle(
             color: theme.colorScheme.secondary.withOpacity(0.2),
             fontSize: 11,

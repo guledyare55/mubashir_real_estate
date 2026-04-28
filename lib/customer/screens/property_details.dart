@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,7 +8,10 @@ import '../../core/models/property.dart';
 import '../../core/models/agency_settings.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/theme/theme_manager.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'inquiry_form_sheet.dart';
+import '../../core/localization/language_provider.dart';
 
 class PropertyDetails extends StatefulWidget {
   final Property property;
@@ -64,10 +68,10 @@ class _PropertyDetailsState extends State<PropertyDetails> {
     final prop = widget.property;
     final shareText = '''
 🏡 *${prop.title}*
-💰 Price: ${prop.currency}${prop.price.toStringAsFixed(0)}
+💰 Price: ${prop.currency} ${NumberFormat('#,###').format(prop.price)}
 📍 Type: ${prop.type}
 📏 Size: ${prop.size.toStringAsFixed(0)} m²
-🛏️ ${prop.beds} Beds | 🚿 ${prop.baths} Baths
+🛏️ ${prop.beds} ${Provider.of<LanguageProvider>(context, listen: false).translate('beds')} | 🚿 ${prop.baths} Baths
 
 Interested? Contact *${_settings?.name ?? 'Mubashir Real Estate'}*
 📞 Support: ${_settings?.supportPhone ?? 'Contact us via app'}
@@ -204,7 +208,7 @@ Interested? Contact *${_settings?.name ?? 'Mubashir Real Estate'}*
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${property.currency}${property.price.toStringAsFixed(0)}', 
+                            Text('${property.currency} ${NumberFormat('#,###').format(property.price)}', 
                               style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: theme.primaryColor)),
                             const SizedBox(height: 8),
                             Text(property.title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: theme.colorScheme.secondary)),
@@ -218,7 +222,7 @@ Interested? Contact *${_settings?.name ?? 'Mubashir Real Estate'}*
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
-                                  _buildFeatureBlock(Icons.bed_rounded, '${property.beds} Beds', theme),
+                                  _buildFeatureBlock(Icons.bed_rounded, '${property.beds} ${lang.translate('beds')}', theme),
                                   _buildFeatureBlock(Icons.shower_rounded, '${property.baths} Baths', theme),
                                   _buildFeatureBlock(Icons.square_foot_rounded, '${property.size.toStringAsFixed(0)} m²', theme),
                                 ],
@@ -235,17 +239,47 @@ Interested? Contact *${_settings?.name ?? 'Mubashir Real Estate'}*
                               height: 200,
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                image: const DecorationImage(
-                                  image: NetworkImage('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=2074&auto=format&fit=crop'),
-                                  fit: BoxFit.cover,
-                                  opacity: 0.6,
-                                ),
                                 color: Colors.grey[200],
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: Center(
-                                child: Icon(Icons.location_on, color: theme.primaryColor, size: 48),
-                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: property.lat != null && property.lng != null
+                                  ? FlutterMap(
+                                      options: MapOptions(
+                                        initialCenter: LatLng(property.lat!, property.lng!),
+                                        initialZoom: 14.0,
+                                        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                                      ),
+                                      children: [
+                                        TileLayer(
+                                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                          userAgentPackageName: 'com.mubashir.realestate',
+                                        ),
+                                        MarkerLayer(
+                                          markers: [
+                                            Marker(
+                                              point: LatLng(property.lat!, property.lng!),
+                                              width: 80,
+                                              height: 80,
+                                              child: Icon(Icons.location_on, color: theme.primaryColor, size: 40),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    )
+                                  : FlutterMap(
+                                      options: const MapOptions(
+                                        initialCenter: LatLng(9.35, 42.8),
+                                        initialZoom: 11.0,
+                                        interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
+                                      ),
+                                      children: [
+                                        TileLayer(
+                                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                          userAgentPackageName: 'com.mubashir.realestate',
+                                        ),
+                                      ],
+                                    ),
                             ),
                             const SizedBox(height: 120),
                           ],
@@ -350,6 +384,7 @@ Interested? Contact *${_settings?.name ?? 'Mubashir Real Estate'}*
   }
 
   Widget _buildDeletedOverlay(ThemeData theme, bool isDark) {
+    final lang = Provider.of<LanguageProvider>(context);
     return Container(
       width: double.infinity,
       color: theme.scaffoldBackgroundColor,
@@ -367,13 +402,13 @@ Interested? Contact *${_settings?.name ?? 'Mubashir Real Estate'}*
           ),
           const SizedBox(height: 32),
           Text(
-            'Property No Longer Available',
+            lang.translate('property_unavailable'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: theme.colorScheme.secondary),
           ),
           const SizedBox(height: 16),
           Text(
-            'This property may have been leased, sold, or recently removed from our elite portfolio.',
+            lang.translate('property_deleted_desc'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: theme.colorScheme.secondary.withOpacity(0.5), height: 1.5),
           ),
@@ -386,7 +421,7 @@ Interested? Contact *${_settings?.name ?? 'Mubashir Real Estate'}*
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Return to Listings', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(lang.translate('return_listings'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 16),
           TextButton.icon(

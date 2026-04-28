@@ -1,9 +1,13 @@
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:async';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:http/http.dart' as http;
 import '../../core/services/supabase_service.dart';
 import '../../core/models/category.dart';
 import '../../core/models/property.dart';
@@ -77,6 +81,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   // Table Scroll Controllers
   final ScrollController _inquiryScrollCtrl = ScrollController();
+
+  // Tab States
+  int _officeTabIndex = 0;
 
   @override
   void initState() {
@@ -196,6 +203,318 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  void _showInquiryDialog(Inquiry inq) {
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 500,
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+          ),
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Customer Message', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    child: Text(inq.customerName[0].toUpperCase(), style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(inq.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(inq.customerEmail, style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5), fontSize: 13)),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+                ),
+                constraints: const BoxConstraints(maxHeight: 400),
+                child: SingleChildScrollView(
+                  child: Text(
+                    inq.message,
+                    style: const TextStyle(fontSize: 15, height: 1.6),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8), // Small padding at the bottom
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDownloadButton(String label, IconData icon, VoidCallback onTap) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<void> _generateUsersReport(List<Profile> users) async {
+    final pdf = pw.Document();
+    final logoBytes = await _getLogoBytes();
+    final logo = logoBytes != null ? pw.MemoryImage(logoBytes) : null;
+
+    for (var i = 0; i < users.length; i += 50) {
+      final chunk = users.sublist(i, i + 50 > users.length ? users.length : i + 50);
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          header: (context) => pw.Column(
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(_agencyNameCtrl.text.toUpperCase(), style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                      pw.Text('OFFICIAL CUSTOMER DIRECTORY', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700, letterSpacing: 2)),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Generated: ${DateFormat('MMM dd, yyyy HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      if (logo != null) pw.Image(logo, width: 40, height: 40),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Total Clients: ${users.length}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo700)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 10),
+              pw.Divider(color: PdfColors.indigo900),
+              pw.SizedBox(height: 20),
+            ],
+          ),
+          build: (context) => [
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              columnWidths: {
+                0: const pw.FixedColumnWidth(25),
+                1: const pw.FlexColumnWidth(3),
+                2: const pw.FlexColumnWidth(2),
+                3: const pw.FlexColumnWidth(1.5),
+                4: const pw.FlexColumnWidth(2),
+              },
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.indigo50),
+                  children: [
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('#', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('FULL NAME', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('PHONE', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('ROLE', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('JOINED DATE', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                  ],
+                ),
+                ...chunk.asMap().entries.map((entry) {
+                  final idx = i + entry.key + 1;
+                  final u = entry.value;
+                  return pw.TableRow(
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('$idx', style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(u.fullName ?? 'N/A', style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(u.phone ?? 'N/A', style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(u.role.toUpperCase(), style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(DateFormat('MMM dd, yyyy').format(u.createdAt), style: const pw.TextStyle(fontSize: 9))),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ],
+          footer: (context) => pw.Container(
+            alignment: pw.Alignment.centerRight,
+            margin: const pw.EdgeInsets.only(top: 20),
+            child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+          ),
+        ),
+      );
+    }
+    _showPdfPreview(pdf, 'Customer Directory');
+  }
+
+  void _showPdfPreview(pw.Document pdf, String title) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.8,
+          height: MediaQuery.of(context).size.height * 0.9,
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
+                  child: PdfPreview(
+                    build: (format) => pdf.save(),
+                    allowPrinting: true,
+                    allowSharing: true,
+                    canChangePageFormat: false,
+                    initialPageFormat: PdfPageFormat.a4,
+                    pdfFileName: "${title.replaceAll(' ', '_').toLowerCase()}.pdf",
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generateExpenseReport(List<OfficeExpense> expenses) async {
+    final pdf = pw.Document();
+    final logoBytes = await _getLogoBytes();
+    final logo = logoBytes != null ? pw.MemoryImage(logoBytes) : null;
+
+    for (var i = 0; i < expenses.length; i += 50) {
+      final chunk = expenses.sublist(i, i + 50 > expenses.length ? expenses.length : i + 50);
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          header: (context) => pw.Column(
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(_agencyNameCtrl.text.toUpperCase(), style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                      pw.Text('OFFICIAL EXPENSE AUDIT', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700, letterSpacing: 2)),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Generated: ${DateFormat('MMM dd, yyyy HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      if (logo != null) pw.Image(logo, width: 40, height: 40),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Total Expenses: ${_currencySymbol}${NumberFormat('#,###').format(expenses.fold(0.0, (sum, ex) => sum + ex.amount))}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.red700)),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 10),
+              pw.Divider(color: PdfColors.indigo900),
+              pw.SizedBox(height: 20),
+            ],
+          ),
+          build: (context) => [
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              columnWidths: {
+                0: const pw.FixedColumnWidth(30),
+                1: const pw.FlexColumnWidth(3),
+                2: const pw.FlexColumnWidth(2),
+                3: const pw.FlexColumnWidth(2),
+                4: const pw.FlexColumnWidth(2),
+              },
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.indigo50),
+                  children: [
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('#', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('TITLE', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('CATEGORY', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('AMOUNT', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                    pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('DATE', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10))),
+                  ],
+                ),
+                ...chunk.asMap().entries.map((entry) {
+                  final idx = i + entry.key + 1;
+                  final ex = entry.value;
+                  return pw.TableRow(
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('$idx', style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(ex.title, style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(ex.category, style: const pw.TextStyle(fontSize: 9))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text('${_currencySymbol}${NumberFormat('#,###').format(ex.amount)}', style: const pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(DateFormat('MMM dd, yyyy').format(ex.date), style: const pw.TextStyle(fontSize: 9))),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ],
+          footer: (context) => pw.Container(
+            alignment: pw.Alignment.centerRight,
+            margin: const pw.EdgeInsets.only(top: 20),
+            child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+          ),
+        ),
+      );
+    }
+    _showPdfPreview(pdf, 'Expense Audit Report');
+  }
+
+  Future<Uint8List?> _getLogoBytes() async {
+    if (_logoBytes != null) return _logoBytes;
+    if (_agencyLogoCtrl.text.isEmpty) return null;
+    try {
+      final response = await http.get(Uri.parse(_agencyLogoCtrl.text));
+      return response.bodyBytes;
+    } catch (e) {
+      return null;
+    }
+  }
+
   void _refreshAll() {
     setState(() {
       _propertiesFuture = _supabaseService.fetchProperties();
@@ -230,7 +549,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'properties': props.length,
       'active_listings': active,
       'deals_closed': rented,
-      'users': users.length,
+      'users': users.where((u) => u.role == 'customer').length,
       'inquiries': _realtimeInquiries.length,
       'owners': owners.length,
     };
@@ -859,24 +1178,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Row(
               children: [
-                _buildStatCard('Total Listings', stats['properties']?.toString() ?? '0', Icons.inventory_2_rounded, Colors.blue),
-                const SizedBox(width: 16),
-                _buildStatCard('Active Now', stats['active_listings']?.toString() ?? '0', Icons.online_prediction_rounded, Colors.teal),
-                const SizedBox(width: 16),
-                _buildStatCard('Deals Closed', stats['deals_closed']?.toString() ?? '0', Icons.handshake_rounded, Colors.purple),
+                Expanded(child: _buildStatCard('Total Listings', stats['properties']?.toString() ?? '0', Icons.inventory_2_rounded, Colors.blue)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildStatCard('Active Now', stats['active_listings']?.toString() ?? '0', Icons.online_prediction_rounded, Colors.teal)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildStatCard('Deals Closed', stats['deals_closed']?.toString() ?? '0', Icons.handshake_rounded, Colors.purple)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildStatCard('Total Revenue', '\$${commissionTotal.toStringAsFixed(0)}', Icons.payments_rounded, Colors.green)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildStatCard('Active Leads', stats['inquiries']?.toString() ?? '0', Icons.forum_rounded, Colors.orange)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildStatCard('Total Clients', stats['users']?.toString() ?? '0', Icons.people_alt_rounded, Colors.indigo)),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildStatCard('Total Revenue', '\$${commissionTotal.toStringAsFixed(0)}', Icons.payments_rounded, Colors.green),
-                const SizedBox(width: 16),
-                _buildStatCard('Active Leads', stats['inquiries']?.toString() ?? '0', Icons.forum_rounded, Colors.orange),
-                const SizedBox(width: 16),
-                _buildStatCard('Total Clients', stats['users']?.toString() ?? '0', Icons.people_alt_rounded, Colors.indigo),
-              ],
-            ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             _buildPropertiesTable(theme, hideSearch: false),
           ],
         );
@@ -902,7 +1217,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isHighDensity = _selectedIndex == 9;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 32, vertical: isHighDensity ? 8 : 24),
+      padding: EdgeInsets.symmetric(horizontal: 32, vertical: isHighDensity ? 8 : 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1059,7 +1374,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(inq.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                      Text(inq.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), overflow: TextOverflow.ellipsis),
                                       Text(inq.customerEmail, style: const TextStyle(color: Colors.grey, fontSize: 12)),
                                     ],
                                   )
@@ -1115,11 +1430,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                                 Expanded(
                                   flex: 3, 
-                                  child: Text(
-                                    inq.message, 
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                  child: InkWell(
+                                    onTap: () => _showInquiryDialog(inq),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4.0),
+                                      child: Text(
+                                        inq.message, 
+                                        style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7), fontSize: 12),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
                                   )
                                 ),
                                 Expanded(
@@ -1302,7 +1624,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     child: profile.avatarUrl == null ? Icon(Icons.person, color: theme.colorScheme.primary) : null,
                                   ),
                                   const SizedBox(width: 16),
-                                  Text(profile.fullName ?? 'Unknown User', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  Expanded(child: Text(profile.fullName ?? 'Unknown User', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis)),
                                 ],
                                 )
                             ),
@@ -1376,54 +1698,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(width: 24),
               Expanded(child: _buildAdminSearchBar('Search properties by title, type, or category...')),
             ],
-            const SizedBox(width: 16),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.category_outlined, size: 18),
-              label: const Text('Manage Categories'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: theme.colorScheme.primary,
-                side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => Dialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                    backgroundColor: const Color(0xFF0F172A),
-                    child: Container(
-                      width: 600,
-                      height: 700,
-                      padding: const EdgeInsets.all(40),
-                      child: StatefulBuilder(
-                        builder: (context, setDialogState) {
-                          return SingleChildScrollView(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text('Categories', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                                    IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.white),
-                                      onPressed: () => Navigator.pop(context),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                _buildCategoryManagerInDialog(theme, setDialogState),
-                              ],
-                            ),
-                          );
-                        }
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
             const SizedBox(width: 16),
             ElevatedButton.icon(
               icon: const Icon(Icons.add_rounded, size: 20),
@@ -1529,7 +1803,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(property.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  Text(property.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), overflow: TextOverflow.ellipsis),
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
@@ -1539,7 +1813,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         child: Text(property.type.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
                                       ),
                                       const SizedBox(width: 8),
-                                      Text('${property.currency}${property.price.toStringAsFixed(0)}', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w600)),
+                                      Text('${property.currency} ${NumberFormat('#,###').format(property.price)}', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w600)),
                                       const SizedBox(width: 12),
                                       Icon(Icons.king_bed_rounded, size: 14, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.4)),
                                       const SizedBox(width: 4),
@@ -1564,12 +1838,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     if (property.location != null) ...[
                                       Icon(Icons.location_on_rounded, size: 14, color: theme.colorScheme.primary.withOpacity(0.7)),
                                       const SizedBox(width: 8),
-                                      Text(
-                                        property.location!,
-                                        style: TextStyle(
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
+                                      Expanded(
+                                        child: Text(
+                                          property.location!,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: theme.colorScheme.primary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1802,7 +2079,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: DropdownButton<String>(
                                     value: _currencySymbol,
                                     isExpanded: true,
-                                    items: [r'$', '€', '£', 'KES', 'UGX', 'ETB'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontWeight: FontWeight.bold)))).toList(),
+                                    items: [r'$', 'ETB'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontWeight: FontWeight.bold)))).toList(),
                                     onChanged: (v) => setState(() => _currencySymbol = v),
                                   ),
                                 ),
@@ -2098,35 +2375,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildStatCard(String title, String value, IconData icon, MaterialColor baseColor) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.02), blurRadius: 10, offset: const Offset(0, 4))],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: isDark ? baseColor.shade900.withOpacity(0.5) : baseColor.shade50, borderRadius: BorderRadius.circular(10)),
-              child: Icon(icon, color: isDark ? baseColor.shade300 : baseColor.shade700, size: 20),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: isDark ? baseColor.shade900.withOpacity(0.5) : baseColor.shade50, borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: isDark ? baseColor.shade300 : baseColor.shade700, size: 16),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title, style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5), fontSize: 10, fontWeight: FontWeight.bold, overflow: TextOverflow.ellipsis)),
+                Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5, overflow: TextOverflow.ellipsis)),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.bold)),
-                  Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -2190,6 +2465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // --- OWNERS MANAGEMENT ---
 
   Widget _buildOwnersView(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2222,155 +2498,164 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 32),
-        FutureBuilder<List<dynamic>>(
-          future: Future.wait([_ownersFuture, _propertiesFuture]),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-            final allOwners = snapshot.data?[0] as List<Owner>? ?? [];
-            final properties = snapshot.data?[1] as List<Property>? ?? [];
-            
-            final filteredOwners = allOwners.where((o) {
-              final query = _searchQuery.toLowerCase();
-              return o.name.toLowerCase().contains(query) || 
-                     (o.email?.toLowerCase().contains(query) ?? false) || 
-                     (o.phone?.toLowerCase().contains(query) ?? false);
-            }).toList();
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: FutureBuilder<List<dynamic>>(
+            future: Future.wait([_ownersFuture, _propertiesFuture]),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+              final allOwners = snapshot.data?[0] as List<Owner>? ?? [];
+              final properties = snapshot.data?[1] as List<Property>? ?? [];
+              
+              final filteredOwners = allOwners.where((o) {
+                final query = _searchQuery.toLowerCase();
+                return o.name.toLowerCase().contains(query) || 
+                       (o.email?.toLowerCase().contains(query) ?? false) || 
+                       (o.phone?.toLowerCase().contains(query) ?? false);
+              }).toList();
 
-            if (allOwners.isEmpty) {
-              return Center(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 100),
-                    Icon(Icons.person_off_rounded, size: 80, color: Colors.grey.withOpacity(0.2)),
-                    const SizedBox(height: 24),
-                    const Text('No property owners registered.', style: TextStyle(color: Colors.grey, fontSize: 18, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              );
-            }
+              if (allOwners.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(60),
+                  child: Center(child: Text('No property owners registered.', style: TextStyle(color: Colors.grey, fontSize: 16))),
+                );
+              }
 
-            if (filteredOwners.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(60),
-                child: Center(child: Text('No matching landlords found.', style: TextStyle(color: Colors.grey, fontSize: 16))),
-              );
-            }
+              if (filteredOwners.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(60),
+                  child: Center(child: Text('No matching landlords found.', style: TextStyle(color: Colors.grey, fontSize: 16))),
+                );
+              }
 
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3, 
-                childAspectRatio: 1.4,
-                crossAxisSpacing: 24,
-                mainAxisSpacing: 24,
-              ),
-              itemCount: filteredOwners.length,
-              itemBuilder: (context, index) {
-                final owner = filteredOwners[index];
-                final ownerPropertyCount = properties.where((p) => p.ownerId == owner.id).length;
-                
-                return Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))
-                    ],
+              return Column(
+                children: [
+                  // Table Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    child: Row(
+                      children: [
+                        Expanded(flex: 1, child: Text('#', style: _headerStyle(theme))),
+                        Expanded(flex: 4, child: Text('Landlord Identity', style: _headerStyle(theme))),
+                        Expanded(flex: 3, child: Text('Contact Channel', style: _headerStyle(theme))),
+                        Expanded(flex: 2, child: Text('Portfolio Size', style: _headerStyle(theme))),
+                        Expanded(flex: 1, child: Text('Actions', style: _headerStyle(theme), textAlign: TextAlign.right)),
+                      ],
+                    ),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        right: -20, top: -20,
-                        child: Icon(Icons.business_rounded, size: 100, color: theme.colorScheme.primary.withOpacity(0.03)),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  const Divider(height: 1),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredOwners.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final owner = filteredOwners[index];
+                      final ownerPropertyCount = properties.where((p) => p.ownerId == owner.id).length;
+                      
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: Row(
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
+                            Expanded(flex: 1, child: Text('#${index + 1}', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5), fontWeight: FontWeight.bold))),
+                            
+                            Expanded(
+                              flex: 4,
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                                    child: Text(owner.name.substring(0, 1).toUpperCase(), style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                                   ),
-                                  child: Text(owner.name[0].toUpperCase(), style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 20)),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
+                                  const SizedBox(width: 16),
+                                  Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(owner.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                      Text(owner.email ?? 'No official email', style: TextStyle(fontSize: 12, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5))),
+                                      Text(owner.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                      if (owner.email != null) Text(owner.email!, style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5), fontSize: 12)),
                                     ],
                                   ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
-                                  onPressed: () async {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (c) => AlertDialog(
-                                        title: const Text('Delete Owner?'),
-                                        content: Text('Are you sure you want to remove ${owner.name}? This will unlinked their properties.'),
-                                        actions: [
-                                          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                                          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirm == true) {
-                                      await _supabaseService.deleteOwner(owner.id);
-                                      _refreshAll();
-                                    }
-                                  },
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                            const Spacer(),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('PORTFOLIO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1, color: Colors.grey)),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                                      child: Text('$ownerPropertyCount Properties', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
-                                    ),
-                                  ],
+
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(owner.phone ?? 'No Phone', style: const TextStyle(fontWeight: FontWeight.w500)),
+                                  const Text('Primary Contact', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                                ],
+                              ),
+                            ),
+
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    const Text('CONTACT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1, color: Colors.grey)),
-                                    const SizedBox(height: 4),
-                                    Text(owner.phone ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                  ],
+                                child: Text(
+                                  '$ownerPropertyCount Properties',
+                                  style: TextStyle(color: theme.colorScheme.primary, fontSize: 11, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
                                 ),
-                              ],
+                              ),
+                            ),
+
+                            Expanded(
+                              flex: 1,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                                    onPressed: () => _confirmDeleteOwner(owner),
+                                    tooltip: 'Remove Owner',
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ],
     );
+  }
+
+  Future<void> _confirmDeleteOwner(Owner owner) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Delete Owner?'),
+        content: Text('Are you sure you want to remove ${owner.name}? This will unlink their properties.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await _supabaseService.deleteOwner(owner.id);
+      _refreshAll();
+    }
   }
 
   void _showAddOwnerDialog(ThemeData theme) {
@@ -2515,14 +2800,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         // Premium Header Section with Actions
         Container(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [theme.colorScheme.primary.withOpacity(0.05), Colors.transparent],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
           ),
           child: Row(
@@ -2531,9 +2816,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Office Command Center', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
-                    const SizedBox(height: 8),
-                    Text('Manage your agency staff and operational overhead.', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 16)),
+                    const Text('Office Command Center', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+                    Text('Manage your agency staff and operational overhead.', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6), fontSize: 13)),
                   ],
                 ),
               ),
@@ -2541,28 +2825,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                    ElevatedButton.icon(
                     onPressed: () => _showAddExpenseDialog(theme),
-                    icon: const Icon(Icons.add_shopping_cart_rounded, size: 20),
+                    icon: const Icon(Icons.add_shopping_cart_rounded, size: 16),
                     label: const Text('Record Expense'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange.withOpacity(0.1),
                       foregroundColor: Colors.orange,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _showAddEmployeeDialog(theme),
-                    icon: const Icon(Icons.person_add_rounded, size: 20),
+                    icon: const Icon(Icons.person_add_rounded, size: 16),
                     label: const Text('Hire Staff'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: theme.colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                      elevation: 8,
-                      shadowColor: theme.colorScheme.primary.withOpacity(0.4),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      elevation: 4,
+                      shadowColor: theme.colorScheme.primary.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                 ],
@@ -2570,169 +2854,227 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 48),
+        const SizedBox(height: 16),
+        
+        // Custom Tab Switcher
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 2,
-              child: _buildStaffSection(theme),
-            ),
-            const SizedBox(width: 40),
-            Expanded(
-              flex: 1,
-              child: _buildExpenseSection(theme),
-            ),
+            _buildOfficeTabItem(0, 'Team Directory', Icons.badge_rounded, theme),
+            const SizedBox(width: 8),
+            _buildOfficeTabItem(1, 'Operating Overhead', Icons.receipt_long_rounded, theme),
           ],
+        ),
+        const SizedBox(height: 16),
+
+        // Selected View
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _officeTabIndex == 0 ? _buildStaffSection(theme) : _buildExpenseSection(theme),
         ),
       ],
     );
   }
 
+  Widget _buildOfficeTabItem(int index, String label, IconData icon, ThemeData theme) {
+    final isSelected = _officeTabIndex == index;
+    return InkWell(
+      onTap: () => setState(() => _officeTabIndex = index),
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: isSelected ? theme.colorScheme.onPrimary : theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? theme.colorScheme.onPrimary : theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStaffSection(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.badge_rounded, color: Colors.blue),
-            const SizedBox(width: 12),
-            const Text('Active Team Members', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Icon(Icons.badge_rounded, color: Colors.blue, size: 18),
+            const SizedBox(width: 10),
+            const Text('Active Team Members', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
-        const SizedBox(height: 24),
-        FutureBuilder<List<Employee>>(
-          future: _employeesFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-            final employees = snapshot.data ?? [];
-            if (employees.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('No staff registered yet.', style: TextStyle(color: Colors.grey))));
-            
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.05, // Reduced to 1.05 to give even more vertical space for payroll buttons
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20,
-              ),
-              itemCount: employees.length,
-              itemBuilder: (context, index) {
-                final e = employees[index];
-                final isPaydayOverdue = DateTime.now().difference(e.lastPayDate).inDays >= 30;
-
-                return Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: isPaydayOverdue ? Colors.orange.withOpacity(0.5) : theme.dividerColor.withOpacity(0.1), width: isPaydayOverdue ? 2 : 1),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: FutureBuilder<List<Employee>>(
+            future: _employeesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+              final employees = snapshot.data ?? [];
+              if (employees.isEmpty) return const Padding(padding: EdgeInsets.all(60), child: Center(child: Text('No staff registered yet.', style: TextStyle(color: Colors.grey))));
+              
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 30, child: Text('#', style: _headerStyle(theme))),
+                        Expanded(flex: 4, child: Text('Team Member', style: _headerStyle(theme))),
+                        Expanded(flex: 4, child: Text('Performance', style: _headerStyle(theme))),
+                        Expanded(flex: 3, child: Text('Payroll', style: _headerStyle(theme))),
+                        Expanded(flex: 3, child: Text('Salary', style: _headerStyle(theme))),
+                        Expanded(flex: 2, child: Text('Actions', style: _headerStyle(theme), textAlign: TextAlign.right)),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [theme.colorScheme.primary, theme.colorScheme.primary.withOpacity(0.7)]),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Center(
-                              child: Text(e.name[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(e.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                Text(e.role.toUpperCase(), style: TextStyle(color: theme.colorScheme.primary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, color: Colors.grey, size: 20),
-                            onPressed: () => _showEmployeeFormDialog(theme, employee: e),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                            onPressed: () => _confirmDeleteStaff(e),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      // Agent Performance Scorecard
-                      FutureBuilder<Map<String, int>>(
-                        future: fetchAgentPerformance(e.id),
-                        builder: (context, statsSnap) {
-                          final stats = statsSnap.data ?? {'properties': 0, 'rentals': 0};
-                          return Row(
-                            children: [
-                              _buildMiniStat('Assets', stats['properties'].toString(), Icons.home_work_outlined),
-                              const SizedBox(width: 12),
-                              _buildMiniStat('Deals', stats['rentals'].toString(), Icons.verified_user_outlined),
-                            ],
-                          );
-                        },
-                      ),
-                      const Spacer(),
-                      const Divider(height: 24, thickness: 1),
-                      if (isPaydayOverdue)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                await _supabaseService.processPayroll(e);
-                                _refreshAll();
-                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Salary of \$${e.salary} processed for ${e.name}')));
-                              },
-                              icon: const Icon(Icons.payments_rounded, size: 16),
-                              label: const Text('PAY MONTHLY SALARY'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  const Divider(height: 1),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: employees.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final e = employees[index];
+                      final isPaydayOverdue = DateTime.now().difference(e.lastPayDate).inDays >= 30;
+                      
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            SizedBox(width: 30, child: Text('${index + 1}', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5), fontSize: 12, fontWeight: FontWeight.bold))),
+                            Expanded(
+                              flex: 4,
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                                    child: Text(e.name.substring(0, 1).toUpperCase(), style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(e.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        Text(e.role.toUpperCase(), style: TextStyle(color: theme.colorScheme.primary, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
+
+                            Expanded(
+                              flex: 4,
+                              child: FutureBuilder<Map<String, int>>(
+                                future: fetchAgentPerformance(e.id),
+                                builder: (context, statsSnap) {
+                                  final stats = statsSnap.data ?? {'properties': 0, 'rentals': 0};
+                                  return Row(
+                                    children: [
+                                      _buildPerformancePill(Icons.home_work_outlined, '${stats['properties']} Assets', Colors.blue),
+                                      const SizedBox(width: 4),
+                                      _buildPerformancePill(Icons.verified_user_outlined, '${stats['rentals']} Deals', Colors.green),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(isPaydayOverdue ? 'Payroll Due' : 'Paid', style: TextStyle(color: isPaydayOverdue ? Colors.orange : Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  Text('Last: ${DateFormat.MMMd().format(e.lastPayDate)}', style: const TextStyle(color: Colors.grey, fontSize: 9)),
+                                ],
+                              ),
+                            ),
+
+                            Expanded(
+                              flex: 3,
+                              child: Text('\$${e.salary.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 14)),
+                            ),
+
+                            Expanded(
+                              flex: 2,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.payments_rounded, color: isPaydayOverdue ? Colors.orange : Colors.green, size: 18),
+                                    onPressed: () => _showPayEmployeeDialog(e),
+                                    constraints: const BoxConstraints(),
+                                    padding: EdgeInsets.zero,
+                                    tooltip: 'Process Payment',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, color: Colors.grey, size: 18),
+                                    onPressed: () => _showEmployeeFormDialog(theme, employee: e),
+                                    constraints: const BoxConstraints(),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    tooltip: 'Edit Profile',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                                    onPressed: () => _confirmDeleteStaff(e),
+                                    constraints: const BoxConstraints(),
+                                    padding: EdgeInsets.zero,
+                                    tooltip: 'Terminate',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('MONTHLY SALARY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              const SizedBox(height: 4),
-                              Text('\$${e.salary.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text('LAST PAID ON', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              const SizedBox(height: 4),
-                              Text(DateFormat.yMMMd().format(e.lastPayDate), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPerformancePill(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
@@ -2760,6 +3102,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (confirm == true) {
       await _supabaseService.deleteEmployee(employee.id);
       _refreshAll();
+    }
+  }
+
+  Future<void> _showPayEmployeeDialog(Employee employee) async {
+    final amountCtrl = TextEditingController(text: employee.salary.toString());
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('Process Payment: ${employee.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Verify or adjust the payout amount for this period:'),
+            const SizedBox(height: 24),
+            TextField(
+              controller: amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                prefixText: '\$ ',
+                labelText: 'Payment Amount',
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                prefixIcon: const Icon(Icons.account_balance_wallet_rounded),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text('Confirm Payment'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final amount = double.tryParse(amountCtrl.text) ?? employee.salary;
+      await _supabaseService.processPayroll(employee, customAmount: amount);
+      _refreshAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment of \$$amount processed successfully for ${employee.name}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     }
   }
 
@@ -3193,7 +3592,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildReportsView(ThemeData theme) {
     return FutureBuilder<List<dynamic>>(
-      future: Future.wait([_propertiesFuture, _payoutsFuture, _profilesFuture, _ownersFuture]),
+      future: Future.wait([_propertiesFuture, _payoutsFuture, _profilesFuture, _ownersFuture, _expensesFuture]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
         
@@ -3201,12 +3600,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final payouts = snapshot.data?[1] as List<Payout>? ?? [];
         final users = snapshot.data?[2] as List<Profile>? ?? [];
         final owners = snapshot.data?[3] as List<Owner>? ?? [];
+        final expenses = snapshot.data?[4] as List<OfficeExpense>? ?? [];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Business Intelligence Reports', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1)),
-            Text('Comprehensive analysis of your real estate ecosystem', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5))),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Business Intelligence Reports', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1)),
+                    Text('Comprehensive analysis of your real estate ecosystem', style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5))),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildDownloadButton('Users Directory', Icons.person_pin_rounded, () => _generateUsersReport(users)),
+                    const SizedBox(width: 12),
+                    _buildDownloadButton('Expense Report', Icons.receipt_long_rounded, () => _generateExpenseReport(expenses)),
+                  ],
+                ),
+              ],
+            ),
             const SizedBox(height: 32),
             
             // 1. Performance Summary Grid

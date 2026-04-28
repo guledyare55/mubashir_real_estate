@@ -99,15 +99,16 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_isSuccess || _isAlreadyInquired) {
       return Container(
         height: 320,
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.of(context).padding.bottom),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -118,18 +119,18 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
               size: 80
             ),
             const SizedBox(height: 24),
-            Text(
-              _isAlreadyInquired ? 'Inquiry Already Active' : 'Inquiry Sent!', 
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _isAlreadyInquired 
-                ? 'You have already inquired about this property. An agent will be in touch with you very soon.' 
-                : 'Your message for ${widget.property.title} has been received. Our team will contact you shortly.', 
-              textAlign: TextAlign.center, 
-              style: TextStyle(color: Colors.grey[600], height: 1.5, fontSize: 14)
-            ),
+              Text(
+                _isAlreadyInquired ? 'Inquiry Already Active' : 'Inquiry Sent!', 
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A))
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _isAlreadyInquired 
+                  ? 'You have already inquired about this property. An agent will be in touch with you very soon.' 
+                  : 'Your message for ${widget.property.title} has been received. Our team will contact you shortly.', 
+                textAlign: TextAlign.center, 
+                style: TextStyle(color: isDark ? Colors.white.withOpacity(0.7) : Colors.grey[600], height: 1.5, fontSize: 14)
+              ),
             const SizedBox(height: 32),
             if (_isAlreadyInquired)
               Text('Thank you for your patience!', style: TextStyle(color: Colors.grey[400], fontStyle: FontStyle.italic, fontSize: 12)),
@@ -142,11 +143,11 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
       // Padding pushes the UI up if the keyboard opens
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.of(context).padding.bottom),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
@@ -156,8 +157,8 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Contact Agent', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
-                  IconButton(icon: const Icon(Icons.close), color: Colors.black54, onPressed: () => Navigator.pop(context))
+                  Text('Contact Agent', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.secondary)),
+                  IconButton(icon: const Icon(Icons.close), color: theme.colorScheme.secondary.withOpacity(0.5), onPressed: () => Navigator.pop(context))
                 ],
               ),
               const SizedBox(height: 16),
@@ -172,12 +173,13 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
               TextField(
                 controller: _messageCtrl,
                 maxLines: 4,
-                style: const TextStyle(color: Colors.black87),
+                style: TextStyle(color: theme.colorScheme.secondary),
                 decoration: InputDecoration(
                   labelText: 'Message',
+                  labelStyle: const TextStyle(color: Colors.grey),
                   alignLabelWithHint: true,
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
@@ -206,14 +208,17 @@ class _InquiryFormSheetState extends State<InquiryFormSheet> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return TextField(
       controller: controller,
-      style: const TextStyle(color: Colors.black87),
+      style: TextStyle(color: theme.colorScheme.secondary),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Colors.grey),
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        prefixIcon: Icon(icon, color: const Color(0xFFF59E0B)),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
